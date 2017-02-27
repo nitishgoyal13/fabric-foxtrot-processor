@@ -1,0 +1,68 @@
+{
+  "name": "foxtrot-ingestion-topology",
+  "sources": [{
+      "id": "kafka-source",
+      "meta": {
+        "id": "1cfda5cb-99d4-34e3-83f0-5b1364a92cce",
+        "type": "SOURCE",
+        "namespace": "global",
+        "name": "kafka-source",
+        "version": "2.1",
+        "description": "A source that generates random sentences from a pool of sentences",
+        "processorType": null,
+        "requiredProperties": [],
+        "optionalProperties": [],
+        "cpu": 0.1,
+        "memory": 64,
+        "source": {
+          "type":"jar",
+          "url":"file:///Users/tushar.naik/Downloads/kafka-source-1.0.0-20161026.141045-1.jar"
+        }
+      },
+      "properties": {
+        "source.kafka-source.brokers": "localhost:9092",
+        "source.kafka-source.topic-name": "foxtrot_events",
+        "source.kafka-source.zookeeper": "localhost:2181"
+      }
+    }
+  ],
+  "processors": [
+    {
+      "id": "foxtrot-processor",
+      "meta": {
+        "id": "2b749006-d2dd-3684-a521-f76d6ab0dec8",
+        "type": "PROCESSOR",
+        "namespace": "global",
+        "name": "foxtrot-processor",
+        "version": "0.1",
+        "description": "A processor that publishes events to Foxtrot",
+        "processorType": "EVENT_DRIVEN",
+        "requiredProperties": [],
+        "optionalProperties": [
+          "delimiter"
+        ],
+        "cpu": 0.1,
+        "memory": 32,
+        "source": {
+          "type": "jar",
+          "url": "file:///Users/tushar.naik/Documents/PhonePe/fabric-foxtrot-ingestion-processor/target/foxtrot-1.0-SNAPSHOT.jar"
+        }
+      },
+      "properties": {
+        "processor.foxtrot-processor.foxtrot.host": "localhost",
+        "processor.foxtrot-processor.foxtrot.port": "200"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "fromType": "SOURCE",
+      "from": "kafka-source",
+      "to": "foxtrot-processor"
+    }
+  ],
+  "properties": {
+    "computation.name": "foxtrot-ingestion-topology",
+    "computation.eventset.is_serialized": "false"
+  }
+}

@@ -12,7 +12,9 @@ import com.olacabs.fabric.model.common.ComponentMetadata;
 import com.olacabs.fabric.model.event.EventSet;
 import com.olacabs.fabric.model.processor.Processor;
 import com.olacabs.fabric.model.processor.ProcessorType;
-import javafx.util.Pair;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -71,9 +73,9 @@ public class FoxtrotProcessor extends StreamingProcessor {
     protected EventSet consume(ProcessingContext processingContext, EventSet eventSet) throws ProcessingException {
 
         /*
-         -> read bytes to Tree Node
+         -> map eventSet (bytes) to Tree Node
          -> filter invalid data
-         -> map them to Pairs <App, Document>
+         -> map them to AppDocument
          -> group by app to create a map of App -> List of Documents
         */
         Map<String, List<Document>> payloads = eventSet.getEvents()
@@ -88,9 +90,13 @@ public class FoxtrotProcessor extends StreamingProcessor {
                 })
                 .filter(Objects::nonNull)
                 .filter(node -> node.has("id") && node.has("time") && node.has("app"))
-                .map(node -> new Pair<>(node.get("app").asText(), new Document(node.get("id").asText(), node.get("time")
-                        .asLong(), node)))
-                .collect(Collectors.groupingBy(Pair::getKey, Collectors.mapping(Pair::getValue, Collectors.toList())));
+                .map(node -> AppDocuments
+                        .builder()
+                        .app(node.get("app").asText())
+                        .document(new Document(node.get("id").asText(), node.get("time").asLong(), node))
+                        .build())
+                .collect(Collectors.groupingBy(AppDocuments::getApp, Collectors.mapping(AppDocuments::getDocument, Collectors
+                        .toList())));
 
         log.debug("received payloads" + payloads);
         payloads.entrySet()
@@ -111,5 +117,13 @@ public class FoxtrotProcessor extends StreamingProcessor {
         } catch (Exception e) {
             log.error("Error while closing foxtrot client", e);
         }
+    }
+
+    @Data
+    @Builder
+    @EqualsAndHashCode
+    private class AppDocuments {
+        private String app;
+        private Document document;
     }
 }

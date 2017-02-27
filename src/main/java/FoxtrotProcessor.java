@@ -27,8 +27,7 @@ import java.util.stream.Collectors;
 /**
  * A Processor implementation that publishes events to foxtrot
  */
-@Processor(
-        namespace = "global",
+@Processor(namespace = "global",
         name = "foxtrot-processor",
         version = "0.1",
         cpu = 0.1,
@@ -36,8 +35,7 @@ import java.util.stream.Collectors;
         description = "A processor that publishes events to Foxtrot",
         processorType = ProcessorType.EVENT_DRIVEN,
         requiredProperties = {"foxtrot.host", "foxtrot.port"},
-        optionalProperties = {}
-)
+        optionalProperties = {})
 @Slf4j
 public class FoxtrotProcessor extends StreamingProcessor {
 
@@ -122,7 +120,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
     @Data
     @Builder
     @EqualsAndHashCode
-    private class AppDocuments {
+    static class AppDocuments {
         private String app;
         private Document document;
     }

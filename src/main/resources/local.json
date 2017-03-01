@@ -12,8 +12,8 @@
         "processorType": null,
         "requiredProperties": [],
         "optionalProperties": [],
-        "cpu": 0.1,
-        "memory": 64,
+        "cpu": 0.5,
+        "memory": 512,
         "source": {
            "type": "artifactory",
            "artifactoryUrl": "http://artifactory.phonepe.com",
@@ -26,6 +26,7 @@
         "source.kafka-source.brokers": "localhost:9092",
         "source.kafka-source.topic-name": "foxtrot_events",
         "source.kafka-source.zookeeper": "localhost:2181"
+        "source.kafka-source.startOffsetPickStrategy": "LATEST"
       }
     }
   ],
@@ -44,8 +45,8 @@
         "optionalProperties": [
           "delimiter"
         ],
-        "cpu": 0.1,
-        "memory": 32,
+        "cpu": 0.5,
+        "memory": 512,
         "source": {
           "type": "artifactory",
           "artifactoryUrl": "http://artifactory.phonepe.com",

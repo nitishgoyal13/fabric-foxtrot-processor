@@ -90,17 +90,18 @@ public class FoxtrotProcessor extends StreamingProcessor {
                 .filter(node -> node.has("id") && node.has("time") && node.has("app"))
                 .map(node -> AppDocuments
                         .builder()
-                        .app(node.get("app").asText())
+                        .app("foobar")
                         .document(new Document(node.get("id").asText(), node.get("time").asLong(), node))
                         .build())
                 .collect(Collectors.groupingBy(AppDocuments::getApp, Collectors.mapping(AppDocuments::getDocument, Collectors
                         .toList())));
 
-        log.debug("received payloads" + payloads);
+        log.info("received payloads" + payloads);
         payloads.entrySet()
                 .forEach(entry -> {
                     try {
-                        foxtrotClient.send(entry.getKey(), entry.getValue());
+                        log.info("Sending msg to foobar: " + entry.getValue());
+                        foxtrotClient.send("foobar", entry.getValue());
                     } catch (Exception e) {
                         log.error("Failed to send document list.", e);
                     }

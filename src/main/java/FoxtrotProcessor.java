@@ -96,13 +96,9 @@ public class FoxtrotProcessor extends StreamingProcessor {
                 .collect(Collectors.groupingBy(AppDocuments::getApp, Collectors.mapping(AppDocuments::getDocument, Collectors
                         .toList())));
 
-        log.info("Received {} payloads", payloads.size());
+        log.info("Received {} payloads", eventSet.getEvents().size());
         payloads.entrySet()
-                .forEach(k -> log.info(k.getKey() + ":" +
-                        k.getValue()
-                                .stream()
-                                .map(s -> s.getData().toString())
-                                .collect(Collectors.joining(" "))));
+                .forEach(k -> log.info(k.getKey() + ":" + k.getValue().size()));
 
         payloads.entrySet()
                 .forEach(entry -> {

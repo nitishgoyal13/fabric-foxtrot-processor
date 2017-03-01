@@ -59,7 +59,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
         foxtrotClientConfig.setTable("dummy");
 
         try {
-            log.info("Creating foxtrot client- {}:{} table- {}" + foxtrotClientConfig.getHost(),
+            log.info("Creating foxtrot client- {}:{} table- {}", foxtrotClientConfig.getHost(),
                     foxtrotClientConfig.getPort(), foxtrotClientConfig.getTable());
             foxtrotClient = new FoxtrotClient(foxtrotClientConfig);
         } catch (Exception e) {
@@ -105,8 +105,13 @@ public class FoxtrotProcessor extends StreamingProcessor {
         payloads.entrySet()
                 .forEach(entry -> {
                     try {
-                        log.info("Sending msgs to foobar: " + entry.getValue().size());
-                        foxtrotClient.send("foobar", entry.getValue());
+                        List<Document> documents = entry.getValue();
+                        String sample = documents.isEmpty()? "N/A" : documents.get(0).getData().toString();
+                        log.info("Sending to Foxtrot app:{} size:{} sample:{}",
+                                "foobar", documents.size(), sample);
+                        foxtrotClient.send("foobar", documents);
+                        log.info("Published to Foxtrot successfully.  app:{} size:{} sample:{}",
+                                "foobar", documents.size(), sample);
                     } catch (Exception e) {
                         log.error("Failed to send document list.", e);
                     }

@@ -25,7 +25,7 @@
       "properties": {
         "source.kafka-source.brokers": "localhost:9092",
         "source.kafka-source.topic-name": "foxtrot_events",
-        "source.kafka-source.zookeeper": "localhost:2181"
+        "source.kafka-source.zookeeper": "localhost:2181",
         "source.kafka-source.startOffsetPickStrategy": "LATEST"
       }
     }

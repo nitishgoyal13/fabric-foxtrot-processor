@@ -1,0 +1,33 @@
+{
+  "type": "DOCKER",
+  "volumes": [
+    {
+      "containerPath": "/var/log/fabric-executor/",
+      "hostPath": "/var/log/fabric-executor/",
+      "mode": "RW"
+    }
+  ],
+  "docker": {
+    "image": "docker.phonepe.com:5000/fabric-executor:1.0.0-SNAPSHOT",
+    "network": "BRIDGE",
+    "portMappings": [
+      {
+        "containerPort": 8080,
+        "hostPort": 0,
+        "servicePort": 10065,
+        "protocol": "tcp",
+        "labels": {}
+      },
+      {
+        "containerPort": 8081,
+        "hostPort": 0,
+        "servicePort": 10066,
+        "protocol": "tcp",
+        "labels": {}
+      }
+    ],
+    "privileged": false,
+    "parameters": [],
+    "forcePullImage": true
+  }
+}

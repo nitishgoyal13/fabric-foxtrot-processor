@@ -92,7 +92,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
                 .filter(node -> node.has("id") && node.has("time") && node.has("app"))
                 .map(node -> AppDocuments
                         .builder()
-                        .app("foobar")
+                        .app(node.get("app").asText())
                         .document(new Document(node.get("id").asText(), node.get("time").asLong(), node))
                         .build())
                 .collect(Collectors.groupingBy(AppDocuments::getApp,
@@ -105,15 +105,23 @@ public class FoxtrotProcessor extends StreamingProcessor {
         payloads.entrySet()
                 .forEach(entry -> {
                     try {
-                        List<Document> documents = entry.getValue();
+                        final String app = entry.getKey();
+                        final List<Document> documents = entry.getValue();
+
+                        /* logging a dummy sample data from the list of documents, for debugging purposes */
                         String sample = documents.isEmpty()? "N/A" : documents.get(0).getData().toString();
+
                         log.info("Sending to Foxtrot app:{} size:{} sample:{}",
-                                "foobar", documents.size(), sample);
-                        foxtrotClient.send("foobar", documents);
+                                app, documents.size(), sample);
+                        
+                        foxtrotClient.send(app, documents);
+
                         log.info("Published to Foxtrot successfully.  app:{} size:{} sample:{}",
-                                "foobar", documents.size(), sample);
+                                app, documents.size(), sample);
+
                     } catch (Exception e) {
                         log.error("Failed to send document list.", e);
+                        throw new RuntimeException("Failed to publish documents", e);
                     }
                 });
         return null;

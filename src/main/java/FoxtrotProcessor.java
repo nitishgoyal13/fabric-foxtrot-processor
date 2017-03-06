@@ -104,24 +104,21 @@ public class FoxtrotProcessor extends StreamingProcessor {
 
         payloads.entrySet()
                 .forEach(entry -> {
+                    final String app = entry.getKey();
+                    final List<Document> documents = entry.getValue();
+                    String sample = documents.isEmpty()
+                            ? "N/A" : documents.get(0).getData() == null
+                            ? "N/A" : documents.get(0).getData().toString();
                     try {
-                        final String app = entry.getKey();
-                        final List<Document> documents = entry.getValue();
-
                         /* logging a dummy sample data from the list of documents, for debugging purposes */
-                        String sample = documents.isEmpty()? "N/A" : documents.get(0).getData().toString();
-
                         log.info("Sending to Foxtrot app:{} size:{} sample:{}",
                                 app, documents.size(), sample);
-                        
                         foxtrotClient.send(app, documents);
-
                         log.info("Published to Foxtrot successfully.  app:{} size:{} sample:{}",
                                 app, documents.size(), sample);
-
                     } catch (Exception e) {
-                        log.error("Failed to send document list.", e);
-                        throw new RuntimeException("Failed to publish documents", e);
+                        log.error("Failed to send document list, for app:" + app
+                                + " size:" + documents.size() + " sample:" + sample, e);
                     }
                 });
         return null;

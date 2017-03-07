@@ -98,7 +98,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
                 .collect(Collectors.groupingBy(AppDocuments::getApp,
                         Collectors.mapping(AppDocuments::getDocument, Collectors.toList())));
 
-        log.info("Received {} payloads", eventSet.getEvents().size());
+//        log.info("Received {} payloads", eventSet.getEvents().size());
         payloads.entrySet()
                 .forEach(k -> log.info(k.getKey() + ":" + k.getValue().size()));
 
@@ -111,11 +111,11 @@ public class FoxtrotProcessor extends StreamingProcessor {
                             ? "N/A" : documents.get(0).getData().toString();
                     try {
                         /* logging a dummy sample data from the list of documents, for debugging purposes */
-                        log.info("Sending to Foxtrot app:{} size:{} sample:{}",
-                                app, documents.size(), sample);
+//                        log.info("Sending to Foxtrot app:{} size:{} sample:{}",
+//                                app, documents.size(), sample);
                         foxtrotClient.send(app, documents);
-                        log.info("Published to Foxtrot successfully.  app:{} size:{} sample:{}",
-                                app, documents.size(), sample);
+//                        log.info("Published to Foxtrot successfully.  app:{} size:{} sample:{}",
+//                                app, documents.size(), sample);
                     } catch (Exception e) {
                         log.error("Failed to send document list, for app:" + app
                                 + " size:" + documents.size() + " sample:" + sample, e);

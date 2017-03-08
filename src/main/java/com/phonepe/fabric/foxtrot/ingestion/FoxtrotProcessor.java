@@ -120,7 +120,9 @@ public class FoxtrotProcessor extends StreamingProcessor {
                                 app, documents.size(), sample);
                     } catch (Exception e) {
                         log.error("Failed to send document list:" + app
-                                + " size:" + documents.size() + " sample:" + documents, e);
+                                + " size:" + documents.size() + " sample:" + documents.stream()
+                                .map(d -> d.getData().toString())
+                                .collect(Collectors.toList()), e);
                         throw new RuntimeException(e);
                     }
                 });

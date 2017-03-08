@@ -14,6 +14,7 @@ import com.olacabs.fabric.model.common.ComponentMetadata;
 import com.olacabs.fabric.model.event.EventSet;
 import com.olacabs.fabric.model.processor.Processor;
 import com.olacabs.fabric.model.processor.ProcessorType;
+import com.phonepe.fabric.foxtrot.ingestion.filter.ValidNodeFilter;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -22,7 +23,6 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
@@ -90,8 +90,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
                         throw new RuntimeException(e);
                     }
                 })
-                .filter(Objects::nonNull)
-                .filter(node -> node.has("id") && node.has("time") && node.has("app"))
+                .filter(new ValidNodeFilter())
                 .map(node -> AppDocuments
                         .builder()
                         .app(node.get("app").asText())
@@ -120,9 +119,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
                                 app, documents.size(), sample);
                     } catch (Exception e) {
                         log.error("Failed to send document list:" + app
-                                + " size:" + documents.size() + " sample:" + documents.stream()
-                                .map(d -> d.getData().toString())
-                                .collect(Collectors.toList()), e);
+                                + " size:" + documents.size() + " sample:" + sample, e);
                         throw new RuntimeException(e);
                     }
                 });

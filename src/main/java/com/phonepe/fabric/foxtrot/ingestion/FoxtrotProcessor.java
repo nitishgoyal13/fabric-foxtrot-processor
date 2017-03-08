@@ -1,12 +1,10 @@
+package com.phonepe.fabric.foxtrot.ingestion;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flipkart.foxtrot.client.ClientType;
 import com.flipkart.foxtrot.client.Document;
 import com.flipkart.foxtrot.client.FoxtrotClient;
 import com.flipkart.foxtrot.client.FoxtrotClientConfig;
-import com.github.rholder.retry.RetryException;
-import com.github.rholder.retry.Retryer;
-import com.github.rholder.retry.RetryerBuilder;
-import com.github.rholder.retry.StopStrategies;
 import com.olacabs.fabric.compute.ProcessingContext;
 import com.olacabs.fabric.compute.processor.InitializationException;
 import com.olacabs.fabric.compute.processor.ProcessingException;
@@ -45,7 +43,6 @@ public class FoxtrotProcessor extends StreamingProcessor {
 
     private FoxtrotClient foxtrotClient;
     private ObjectMapper mapper;
-    private Retryer<Boolean> retryer;
 
     @Override
     public void initialize(String s, Properties global, Properties local,
@@ -72,11 +69,6 @@ public class FoxtrotProcessor extends StreamingProcessor {
             throw new RuntimeException(e);
         }
         mapper = new ObjectMapper();
-
-        retryer = RetryerBuilder.<Boolean>newBuilder()
-                .retryIfResult(r -> r == null || !r)
-                .withStopStrategy(StopStrategies.stopAfterAttempt(3))
-                .build();
     }
 
     @Override
@@ -120,32 +112,19 @@ public class FoxtrotProcessor extends StreamingProcessor {
                             ? "N/A" : documents.get(0).getData() == null
                             ? "N/A" : documents.get(0).getData().toString();
                     try {
-                        retryer.call(() -> logAndPublishToFoxtrot(app, documents, sample));
-                    } catch (RetryException e) {
-                        log.error("Failed to send document list even after 3 Attempts, for app:" + app
-                                + " size:" + documents.size() + " sample:" + sample, e);
+                        /* logging a dummy sample data from the list of documents, for debugging purposes */
+                        log.info("Sending to Foxtrot app:{} size:{} sample:{}",
+                                app, documents.size(), sample);
+                        foxtrotClient.send(app, documents);
+                        log.info("Published to Foxtrot successfully.  app:{} size:{} sample:{}",
+                                app, documents.size(), sample);
                     } catch (Exception e) {
                         log.error("Failed to send document list:" + app
                                 + " size:" + documents.size() + " sample:" + sample, e);
+                        throw new RuntimeException(e);
                     }
                 });
         return null;
-    }
-
-    private Boolean logAndPublishToFoxtrot(String app, List<Document> documents, String sample) {
-        try {
-            /* logging a dummy sample data from the list of documents, for debugging purposes */
-            log.info("Sending to Foxtrot app:{} size:{} sample:{}",
-                    app, documents.size(), sample);
-            foxtrotClient.send(app, documents);
-            log.info("Published to Foxtrot successfully.  app:{} size:{} sample:{}",
-                    app, documents.size(), sample);
-            return true;
-        } catch (Exception e) {
-            log.error("Failed to send document list, for app:" + app
-                    + " size:" + documents.size() + " sample:" + sample + " RETRYING", e);
-        }
-        return false;
     }
 
     @Override

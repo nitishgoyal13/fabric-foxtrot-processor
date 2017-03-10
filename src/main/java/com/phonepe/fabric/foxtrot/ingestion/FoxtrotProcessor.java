@@ -1,5 +1,8 @@
 package com.phonepe.fabric.foxtrot.ingestion;
 
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.SharedMetricRegistries;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flipkart.foxtrot.client.ClientType;
 import com.flipkart.foxtrot.client.Document;
@@ -41,6 +44,11 @@ import java.util.stream.Collectors;
 @Slf4j
 public class FoxtrotProcessor extends StreamingProcessor {
 
+    public static final MetricRegistry METRICS_REGISTRY = SharedMetricRegistries.getOrCreate("metrics-registry");
+    private static final Meter totalEventRateMeter =
+            METRICS_REGISTRY.meter(MetricRegistry.name(FoxtrotProcessor.class, "total-event-set-rate"));
+    private static final Meter validEventRateMeter =
+            METRICS_REGISTRY.meter(MetricRegistry.name(FoxtrotProcessor.class, "valid-event-set-rate"));
     private FoxtrotClient foxtrotClient;
     private ObjectMapper mapper;
 
@@ -74,6 +82,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
     @Override
     protected EventSet consume(ProcessingContext processingContext, EventSet eventSet) throws ProcessingException {
 
+        totalEventRateMeter.mark(eventSet.getEvents().size());
         /*
          -> map eventSet (bytes) to Tree Node
          -> filter invalid data
@@ -102,6 +111,8 @@ public class FoxtrotProcessor extends StreamingProcessor {
         log.info("Received {} payloads", eventSet.getEvents().size());
         payloads.entrySet()
                 .forEach(k -> log.info(k.getKey() + ":" + k.getValue().size()));
+
+        validEventRateMeter.mark(eventSet.getEvents().size());
 
         payloads.entrySet()
                 .forEach(entry -> {

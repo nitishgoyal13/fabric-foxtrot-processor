@@ -1,12 +1,14 @@
 package com.phonepe.fabric.foxtrot.ingestion.filter;
 
 
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.Meter;
+import com.phonepe.fabric.foxtrot.ingestion.FoxtrotProcessor;
 
-import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
+
+import static com.phonepe.fabric.foxtrot.ingestion.FoxtrotProcessor.METRICS_REGISTRY;
 
 /**
  * @author tushar.naik
@@ -14,8 +16,8 @@ import java.util.function.Predicate;
  */
 public class ValidNodeFilter implements Predicate<JsonNode> {
 
-    private static final Meter invalidMeter = Metrics.newMeter(ValidNodeFilter.class, "invalid-document",
-            "invalid-document", TimeUnit.SECONDS);
+    private static final Meter invalidMeter =
+            METRICS_REGISTRY.meter(MetricRegistry.name(FoxtrotProcessor.class, "invalid-event"));
 
     @Override
     public boolean test(JsonNode node) {

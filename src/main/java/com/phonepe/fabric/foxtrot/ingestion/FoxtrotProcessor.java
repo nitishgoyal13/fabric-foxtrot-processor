@@ -1,3 +1,8 @@
+package com.phonepe.fabric.foxtrot.ingestion;
+
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.SharedMetricRegistries;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flipkart.foxtrot.client.ClientType;
 import com.flipkart.foxtrot.client.Document;
@@ -12,6 +17,7 @@ import com.olacabs.fabric.model.common.ComponentMetadata;
 import com.olacabs.fabric.model.event.EventSet;
 import com.olacabs.fabric.model.processor.Processor;
 import com.olacabs.fabric.model.processor.ProcessorType;
+import com.phonepe.fabric.foxtrot.ingestion.filter.ValidNodeFilter;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -20,7 +26,6 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
@@ -39,6 +44,11 @@ import java.util.stream.Collectors;
 @Slf4j
 public class FoxtrotProcessor extends StreamingProcessor {
 
+    public static final MetricRegistry METRICS_REGISTRY = SharedMetricRegistries.getOrCreate("metrics-registry");
+    private static final Meter totalEventRateMeter =
+            METRICS_REGISTRY.meter(MetricRegistry.name(FoxtrotProcessor.class, "total-event-set-rate"));
+    private static final Meter validEventRateMeter =
+            METRICS_REGISTRY.meter(MetricRegistry.name(FoxtrotProcessor.class, "valid-event-set-rate"));
     private FoxtrotClient foxtrotClient;
     private ObjectMapper mapper;
 
@@ -72,6 +82,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
     @Override
     protected EventSet consume(ProcessingContext processingContext, EventSet eventSet) throws ProcessingException {
 
+        totalEventRateMeter.mark(eventSet.getEvents().size());
         /*
          -> map eventSet (bytes) to Tree Node
          -> filter invalid data
@@ -88,8 +99,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
                         throw new RuntimeException(e);
                     }
                 })
-                .filter(Objects::nonNull)
-                .filter(node -> node.has("id") && node.has("time") && node.has("app"))
+                .filter(new ValidNodeFilter())
                 .map(node -> AppDocuments
                         .builder()
                         .app(node.get("app").asText())
@@ -102,26 +112,26 @@ public class FoxtrotProcessor extends StreamingProcessor {
         payloads.entrySet()
                 .forEach(k -> log.info(k.getKey() + ":" + k.getValue().size()));
 
+        validEventRateMeter.mark(eventSet.getEvents().size());
+
         payloads.entrySet()
                 .forEach(entry -> {
+                    final String app = entry.getKey();
+                    final List<Document> documents = entry.getValue();
+                    String sample = documents.isEmpty()
+                            ? "N/A" : documents.get(0).getData() == null
+                            ? "N/A" : documents.get(0).getData().toString();
                     try {
-                        final String app = entry.getKey();
-                        final List<Document> documents = entry.getValue();
-
                         /* logging a dummy sample data from the list of documents, for debugging purposes */
-                        String sample = documents.isEmpty()? "N/A" : documents.get(0).getData().toString();
-
                         log.info("Sending to Foxtrot app:{} size:{} sample:{}",
                                 app, documents.size(), sample);
-                        
                         foxtrotClient.send(app, documents);
-
                         log.info("Published to Foxtrot successfully.  app:{} size:{} sample:{}",
                                 app, documents.size(), sample);
-
                     } catch (Exception e) {
-                        log.error("Failed to send document list.", e);
-                        throw new RuntimeException("Failed to publish documents", e);
+                        log.error("Failed to send document list:" + app
+                                + " size:" + documents.size() + " sample:" + sample, e);
+                        throw new RuntimeException(e);
                     }
                 });
         return null;

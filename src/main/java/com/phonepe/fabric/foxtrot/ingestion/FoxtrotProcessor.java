@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
  */
 @Processor(namespace = "global",
         name = "foxtrot-processor",
-        version = "0.1",
+        version = "1.1",
         cpu = 0.1,
         memory = 32,
         description = "A processor that publishes events to Foxtrot",

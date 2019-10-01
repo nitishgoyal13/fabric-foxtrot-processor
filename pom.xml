@@ -6,7 +6,7 @@
 
     <groupId>com.phonepe.dataplatform</groupId>
     <artifactId>fabric-foxtrot-ingestion</artifactId>
-    <version>1.1-SNAPSHOT</version>
+    <version>1.2</version>
 
     <properties>
         <fabric.version>1.0.0-SNAPSHOT</fabric.version>
@@ -61,9 +61,9 @@
         </dependency>
 
         <dependency>
-            <groupId>com.flipkart.foxtrot</groupId>
-            <artifactId>foxtrot-client</artifactId>
-            <version>${foxtrot.client.version}</version>
+            <groupId>com.phonepe.dataplatform</groupId>
+            <artifactId>event-ingestion-client</artifactId>
+            <version>1.3.13-3</version>
         </dependency>
 
     </dependencies>
@@ -109,7 +109,7 @@
                         <configuration>
                             <transformers>
                                 <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                             </transformers>
                         </configuration>
                     </execution>

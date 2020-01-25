@@ -8,6 +8,7 @@ import com.flipkart.foxtrot.client.ClientType;
 import com.flipkart.foxtrot.client.Document;
 import com.flipkart.foxtrot.client.FoxtrotClient;
 import com.flipkart.foxtrot.client.FoxtrotClientConfig;
+import com.google.common.collect.Lists;
 import com.olacabs.fabric.compute.ProcessingContext;
 import com.olacabs.fabric.compute.processor.InitializationException;
 import com.olacabs.fabric.compute.processor.ProcessingException;
@@ -18,16 +19,15 @@ import com.olacabs.fabric.model.event.EventSet;
 import com.olacabs.fabric.model.processor.Processor;
 import com.olacabs.fabric.model.processor.ProcessorType;
 import com.phonepe.fabric.foxtrot.ingestion.filter.ValidNodeFilter;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.extern.slf4j.Slf4j;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * A Processor implementation that publishes events to foxtrot
@@ -49,12 +49,13 @@ public class FoxtrotProcessor extends StreamingProcessor {
             METRICS_REGISTRY.meter(MetricRegistry.name(FoxtrotProcessor.class, "total-event-set-rate"));
     private static final Meter validEventRateMeter =
             METRICS_REGISTRY.meter(MetricRegistry.name(FoxtrotProcessor.class, "valid-event-set-rate"));
+    private static final List<String> MESSAGES_TO_IGNORE = Lists.newArrayList("Request-URI Too Long");
     private FoxtrotClient foxtrotClient;
     private ObjectMapper mapper;
 
     @Override
     public void initialize(String s, Properties global, Properties local,
-                           ComponentMetadata componentMetadata) throws InitializationException {
+            ComponentMetadata componentMetadata) throws InitializationException {
 
         /* foxtrot client setup */
         String foxtrotHost = ComponentPropertyReader.readString(local, global,
@@ -73,7 +74,8 @@ public class FoxtrotProcessor extends StreamingProcessor {
                     foxtrotClientConfig.getPort(), foxtrotClientConfig.getTable());
             foxtrotClient = new FoxtrotClient(foxtrotClientConfig);
         } catch (Exception e) {
-            log.error(String.format("Error creating foxtrot client with hosts%s, port:%s", foxtrotHost, foxtrotPort), e);
+            log.error(String.format("Error creating foxtrot client with hosts%s, port:%s", foxtrotHost, foxtrotPort),
+                    e);
             throw new RuntimeException(e);
         }
         mapper = new ObjectMapper();
@@ -131,6 +133,12 @@ public class FoxtrotProcessor extends StreamingProcessor {
                     } catch (Exception e) {
                         log.error("Failed to send document list:" + app
                                 + " size:" + documents.size() + " sample:" + sample, e);
+                        for (String message : MESSAGES_TO_IGNORE) {
+                            if (e.getMessage().contains(message)) {
+                                return;
+                            }
+
+                        }
                         throw new RuntimeException(e);
                     }
                 });
@@ -150,6 +158,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
     @Builder
     @EqualsAndHashCode
     static class AppDocuments {
+
         private String app;
         private Document document;
     }

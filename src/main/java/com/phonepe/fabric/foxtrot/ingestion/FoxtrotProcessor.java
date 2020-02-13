@@ -55,7 +55,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
             METRICS_REGISTRY.meter(MetricRegistry.name(FoxtrotProcessor.class, "valid-event-set-rate"));
     private static final List<String> MESSAGES_TO_IGNORE = Lists.newArrayList("Request-URI Too Long");
 
-    private static final String ERROR_CAUSE = "ingestionExceptionCause";
+    private static final String ERROR= "ingestionException";
     private static final String ERROR_MESSAGE = "ingestionExceptionMessage";
 
     private FoxtrotClient foxtrotClient;
@@ -161,7 +161,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
             List<Document> failedDocuments = new ArrayList<>();
             for (Document document : documents) {
                 Map<String, Object> data = readMapFromObject(document.getData());
-                data.put(ERROR_CAUSE, exception.getCause().toString());
+                data.put(ERROR, exception.toString());
                 data.put(ERROR_MESSAGE, exception.getMessage());
                 document.setData(mapper.valueToTree(data));
                 failedDocuments.add(document);

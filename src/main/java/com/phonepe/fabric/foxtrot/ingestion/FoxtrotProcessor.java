@@ -4,9 +4,7 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.flipkart.foxtrot.client.ClientType;
 import com.flipkart.foxtrot.client.Document;
 import com.flipkart.foxtrot.client.FoxtrotClient;
@@ -55,8 +53,10 @@ public class FoxtrotProcessor extends StreamingProcessor {
             METRICS_REGISTRY.meter(MetricRegistry.name(FoxtrotProcessor.class, "valid-event-set-rate"));
     private static final List<String> MESSAGES_TO_IGNORE = Lists.newArrayList("Request-URI Too Long");
 
-    private static final String ERROR= "ingestionException";
+    private static final String ERROR = "ingestionException";
     private static final String ERROR_MESSAGE = "ingestionExceptionMessage";
+    private static final String APP_NAME = "app";
+    private static final int MAX_APP_NAME_SIZE = 1024;
 
     private FoxtrotClient foxtrotClient;
     private String errorTableName;
@@ -115,7 +115,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
                 .filter(new ValidNodeFilter())
                 .map(node -> AppDocuments
                         .builder()
-                        .app(node.get("app").asText())
+                        .app(node.get(APP_NAME).asText())
                         .document(new Document(node.get("id").asText(), node.get("time").asLong(), node))
                         .build())
                 .collect(Collectors.groupingBy(AppDocuments::getApp,
@@ -161,14 +161,15 @@ public class FoxtrotProcessor extends StreamingProcessor {
             List<Document> failedDocuments = new ArrayList<>();
             for (Document document : documents) {
                 Map<String, Object> data = readMapFromObject(document.getData());
-                data.put(ERROR, exception.toString());
+                data.put(ERROR, exception.getClass().getName());
                 data.put(ERROR_MESSAGE, exception.getMessage());
+                data.put(APP_NAME, ((String) data.get(APP_NAME)).substring(0, MAX_APP_NAME_SIZE));
                 document.setData(mapper.valueToTree(data));
                 failedDocuments.add(document);
             }
             foxtrotClient.send(errorTableName, failedDocuments);
-            log.info("Successfully sent failed documents to debug table for exception :{}, {}", exception.toString(),
-                    exception.getMessage());
+            log.info("Successfully sent failed documents to debug table for exception :{}, {}",
+                    exception.getClass().getName(), exception.getMessage());
         } catch (Exception ex) {
             log.error("Error sending failed document list:" + app
                     + " size:" + documents.size() + " sample:" + sample, ex);

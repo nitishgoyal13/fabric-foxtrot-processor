@@ -165,7 +165,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
                 Map<String, Object> data = readMapFromObject(document.getData());
                 data.put(ERROR, exception.getClass().getName());
                 data.put(ERROR_MESSAGE, exception.getMessage());
-                data.put(APP_NAME, ((String) data.get(APP_NAME)).substring(0, maxAppNameSize));
+                data.put(APP_NAME, app.length() > maxAppNameSize ? app.substring(0, maxAppNameSize) : app);
                 document.setData(mapper.valueToTree(data));
                 failedDocuments.add(document);
             }

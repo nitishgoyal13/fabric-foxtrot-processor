@@ -42,7 +42,7 @@ import lombok.extern.slf4j.Slf4j;
         description = "A processor that publishes events to Foxtrot",
         processorType = ProcessorType.EVENT_DRIVEN,
         requiredProperties = {"foxtrot.host", "foxtrot.port"},
-        optionalProperties = {"errorTable"})
+        optionalProperties = {"errorTable", "maxAppNameSize"})
 @Slf4j
 public class FoxtrotProcessor extends StreamingProcessor {
 
@@ -56,10 +56,10 @@ public class FoxtrotProcessor extends StreamingProcessor {
     private static final String ERROR = "ingestionException";
     private static final String ERROR_MESSAGE = "ingestionExceptionMessage";
     private static final String APP_NAME = "app";
-    private static final int MAX_APP_NAME_SIZE = 1024;
+    private String errorTableName;
+    private int maxAppNameSize;
 
     private FoxtrotClient foxtrotClient;
-    private String errorTableName;
     private ObjectMapper mapper;
 
     @Override
@@ -73,6 +73,8 @@ public class FoxtrotProcessor extends StreamingProcessor {
                 "foxtrot.port", s, componentMetadata, 80);
         errorTableName = ComponentPropertyReader.readString(local, global,
                 "errorTable", s, componentMetadata, "debug");
+        maxAppNameSize = ComponentPropertyReader
+                .readInteger(local, global, "maxAppNameSize", s, componentMetadata, 1024);
 
         FoxtrotClientConfig foxtrotClientConfig = new FoxtrotClientConfig();
         foxtrotClientConfig.setClientType(ClientType.sync);
@@ -163,7 +165,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
                 Map<String, Object> data = readMapFromObject(document.getData());
                 data.put(ERROR, exception.getClass().getName());
                 data.put(ERROR_MESSAGE, exception.getMessage());
-                data.put(APP_NAME, ((String) data.get(APP_NAME)).substring(0, MAX_APP_NAME_SIZE));
+                data.put(APP_NAME, ((String) data.get(APP_NAME)).substring(0, maxAppNameSize));
                 document.setData(mapper.valueToTree(data));
                 failedDocuments.add(document);
             }

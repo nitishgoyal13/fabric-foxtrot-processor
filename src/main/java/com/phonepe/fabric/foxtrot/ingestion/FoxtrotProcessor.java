@@ -3,7 +3,9 @@ package com.phonepe.fabric.foxtrot.ingestion;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.flipkart.foxtrot.client.ClientType;
 import com.flipkart.foxtrot.client.Document;
 import com.flipkart.foxtrot.client.FoxtrotClient;
@@ -20,6 +22,7 @@ import com.olacabs.fabric.model.processor.Processor;
 import com.olacabs.fabric.model.processor.ProcessorType;
 import com.phonepe.fabric.foxtrot.ingestion.filter.ValidNodeFilter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -40,7 +43,7 @@ import lombok.extern.slf4j.Slf4j;
         description = "A processor that publishes events to Foxtrot",
         processorType = ProcessorType.EVENT_DRIVEN,
         requiredProperties = {"foxtrot.host", "foxtrot.port"},
-        optionalProperties = {})
+        optionalProperties = {"errorTable"})
 @Slf4j
 public class FoxtrotProcessor extends StreamingProcessor {
 
@@ -50,7 +53,12 @@ public class FoxtrotProcessor extends StreamingProcessor {
     private static final Meter validEventRateMeter =
             METRICS_REGISTRY.meter(MetricRegistry.name(FoxtrotProcessor.class, "valid-event-set-rate"));
     private static final List<String> MESSAGES_TO_IGNORE = Lists.newArrayList("Request-URI Too Long");
+
+    private static final String ERROR_CAUSE = "ingestionExceptionCause";
+    private static final String ERROR_MESSAGE = "ingestionExceptionMessage";
+
     private FoxtrotClient foxtrotClient;
+    private String errorTableName;
     private ObjectMapper mapper;
 
     @Override
@@ -62,6 +70,8 @@ public class FoxtrotProcessor extends StreamingProcessor {
                 "foxtrot.host", s, componentMetadata, "localhost");
         Integer foxtrotPort = ComponentPropertyReader.readInteger(local, global,
                 "foxtrot.port", s, componentMetadata, 80);
+        errorTableName = ComponentPropertyReader.readString(local, global,
+                "errorTable", s, componentMetadata, "debug");
 
         FoxtrotClientConfig foxtrotClientConfig = new FoxtrotClientConfig();
         foxtrotClientConfig.setClientType(ClientType.sync);
@@ -133,16 +143,39 @@ public class FoxtrotProcessor extends StreamingProcessor {
                     } catch (Exception e) {
                         log.error("Failed to send document list:" + app
                                 + " size:" + documents.size() + " sample:" + sample, e);
+                        ingestFailedDocuments(app, documents, sample, e);
                         for (String message : MESSAGES_TO_IGNORE) {
                             if (e.getMessage().contains(message)) {
                                 return;
                             }
-
                         }
                         throw new RuntimeException(e);
                     }
                 });
         return null;
+    }
+
+    private void ingestFailedDocuments(String app, List<Document> documents, String sample, Exception exception) {
+        try {
+            List<Document> failedDocuments = new ArrayList<>();
+            for(Document document: documents){
+                try {
+                    JsonNode jsonNode = mapper.readTree((byte[]) document.getData());
+                    ((ObjectNode) jsonNode)
+                            .put(ERROR_CAUSE, exception.getCause().toString());
+                    ((ObjectNode) jsonNode)
+                            .put(ERROR_MESSAGE, exception.getCause().toString());
+                    document.setData(jsonNode);
+                    failedDocuments.add(document);
+                } catch (IOException ex) {
+                    log.error("Error creating failed document jsonNode :", ex);
+                }
+            }
+            foxtrotClient.send(errorTableName, failedDocuments);
+        } catch (Exception ex) {
+            log.error("Error sending failed document list:" + app
+                    + " size:" + documents.size() + " sample:" + sample, ex);
+        }
     }
 
     @Override

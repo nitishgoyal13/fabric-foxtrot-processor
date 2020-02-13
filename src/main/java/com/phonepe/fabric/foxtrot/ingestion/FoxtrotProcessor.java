@@ -158,7 +158,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
     private void ingestFailedDocuments(String app, List<Document> documents, String sample, Exception exception) {
         try {
             List<Document> failedDocuments = new ArrayList<>();
-            for(Document document: documents){
+            for (Document document : documents) {
                 try {
                     JsonNode jsonNode = mapper.readTree((byte[]) document.getData());
                     ((ObjectNode) jsonNode)
@@ -172,6 +172,8 @@ public class FoxtrotProcessor extends StreamingProcessor {
                 }
             }
             foxtrotClient.send(errorTableName, failedDocuments);
+            log.info("Successfully sent failed documents to debug table for exception :{}, {}", exception.getCause(),
+                    exception.getMessage());
         } catch (Exception ex) {
             log.error("Error sending failed document list:" + app
                     + " size:" + documents.size() + " sample:" + sample, ex);

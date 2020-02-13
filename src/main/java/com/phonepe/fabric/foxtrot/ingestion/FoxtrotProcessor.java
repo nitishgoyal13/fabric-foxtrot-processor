@@ -3,6 +3,7 @@ package com.phonepe.fabric.foxtrot.ingestion;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -159,17 +160,11 @@ public class FoxtrotProcessor extends StreamingProcessor {
         try {
             List<Document> failedDocuments = new ArrayList<>();
             for (Document document : documents) {
-                try {
-                    JsonNode jsonNode = mapper.readTree((byte[]) document.getData());
-                    ((ObjectNode) jsonNode)
-                            .put(ERROR_CAUSE, exception.getCause().toString());
-                    ((ObjectNode) jsonNode)
-                            .put(ERROR_MESSAGE, exception.getCause().toString());
-                    document.setData(jsonNode);
-                    failedDocuments.add(document);
-                } catch (IOException ex) {
-                    log.error("Error creating failed document jsonNode :", ex);
-                }
+                Map<String, Object> data = readMapFromObject(document.getData());
+                data.put(ERROR_CAUSE, exception.getCause().toString());
+                data.put(ERROR_MESSAGE, exception.getMessage());
+                document.setData(mapper.valueToTree(data));
+                failedDocuments.add(document);
             }
             foxtrotClient.send(errorTableName, failedDocuments);
             log.info("Successfully sent failed documents to debug table for exception :{}, {}", exception.getCause(),
@@ -187,6 +182,11 @@ public class FoxtrotProcessor extends StreamingProcessor {
         } catch (Exception e) {
             log.error("Error while closing foxtrot client", e);
         }
+    }
+
+    private Map<String, Object> readMapFromObject(Object obj) {
+        return mapper.convertValue(obj, new TypeReference<Map<String, Object>>() {
+        });
     }
 
     @Data

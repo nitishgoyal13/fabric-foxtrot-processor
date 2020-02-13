@@ -37,7 +37,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Processor(namespace = "global",
         name = "foxtrot-processor",
-        version = "1.1",
+        version = "1.3-SNAPSHOT",
         cpu = 0.1,
         memory = 32,
         description = "A processor that publishes events to Foxtrot",

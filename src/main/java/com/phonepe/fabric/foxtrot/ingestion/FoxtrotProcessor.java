@@ -167,7 +167,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
                 failedDocuments.add(document);
             }
             foxtrotClient.send(errorTableName, failedDocuments);
-            log.info("Successfully sent failed documents to debug table for exception :{}, {}", exception.getCause(),
+            log.info("Successfully sent failed documents to debug table for exception :{}, {}", exception.toString(),
                     exception.getMessage());
         } catch (Exception ex) {
             log.error("Error sending failed document list:" + app

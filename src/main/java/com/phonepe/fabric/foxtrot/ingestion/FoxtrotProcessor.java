@@ -3,6 +3,7 @@ package com.phonepe.fabric.foxtrot.ingestion;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flipkart.foxtrot.client.ClientType;
 import com.flipkart.foxtrot.client.Document;
@@ -20,6 +21,7 @@ import com.olacabs.fabric.model.processor.Processor;
 import com.olacabs.fabric.model.processor.ProcessorType;
 import com.phonepe.fabric.foxtrot.ingestion.filter.ValidNodeFilter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -34,13 +36,13 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Processor(namespace = "global",
         name = "foxtrot-processor",
-        version = "1.1",
+        version = "1.3",
         cpu = 0.1,
         memory = 32,
         description = "A processor that publishes events to Foxtrot",
         processorType = ProcessorType.EVENT_DRIVEN,
         requiredProperties = {"foxtrot.host", "foxtrot.port"},
-        optionalProperties = {})
+        optionalProperties = {"errorTable", "maxAppNameSize"})
 @Slf4j
 public class FoxtrotProcessor extends StreamingProcessor {
 
@@ -50,6 +52,13 @@ public class FoxtrotProcessor extends StreamingProcessor {
     private static final Meter validEventRateMeter =
             METRICS_REGISTRY.meter(MetricRegistry.name(FoxtrotProcessor.class, "valid-event-set-rate"));
     private static final List<String> MESSAGES_TO_IGNORE = Lists.newArrayList("Request-URI Too Long");
+
+    private static final String ERROR = "ingestionException";
+    private static final String ERROR_MESSAGE = "ingestionExceptionMessage";
+    private static final String APP_NAME = "app";
+    private String errorTableName;
+    private int maxAppNameSize;
+
     private FoxtrotClient foxtrotClient;
     private ObjectMapper mapper;
 
@@ -62,6 +71,10 @@ public class FoxtrotProcessor extends StreamingProcessor {
                 "foxtrot.host", s, componentMetadata, "localhost");
         Integer foxtrotPort = ComponentPropertyReader.readInteger(local, global,
                 "foxtrot.port", s, componentMetadata, 80);
+        errorTableName = ComponentPropertyReader.readString(local, global,
+                "errorTable", s, componentMetadata, "debug");
+        maxAppNameSize = ComponentPropertyReader
+                .readInteger(local, global, "maxAppNameSize", s, componentMetadata, 1024);
 
         FoxtrotClientConfig foxtrotClientConfig = new FoxtrotClientConfig();
         foxtrotClientConfig.setClientType(ClientType.sync);
@@ -104,7 +117,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
                 .filter(new ValidNodeFilter())
                 .map(node -> AppDocuments
                         .builder()
-                        .app(node.get("app").asText())
+                        .app(node.get(APP_NAME).asText())
                         .document(new Document(node.get("id").asText(), node.get("time").asLong(), node))
                         .build())
                 .collect(Collectors.groupingBy(AppDocuments::getApp,
@@ -133,16 +146,36 @@ public class FoxtrotProcessor extends StreamingProcessor {
                     } catch (Exception e) {
                         log.error("Failed to send document list:" + app
                                 + " size:" + documents.size() + " sample:" + sample, e);
+                        ingestFailedDocuments(app, documents, sample, e);
                         for (String message : MESSAGES_TO_IGNORE) {
                             if (e.getMessage().contains(message)) {
                                 return;
                             }
-
                         }
                         throw new RuntimeException(e);
                     }
                 });
         return null;
+    }
+
+    private void ingestFailedDocuments(String app, List<Document> documents, String sample, Exception exception) {
+        try {
+            List<Document> failedDocuments = new ArrayList<>();
+            for (Document document : documents) {
+                Map<String, Object> data = readMapFromObject(document.getData());
+                data.put(ERROR, exception.getClass().getName());
+                data.put(ERROR_MESSAGE, exception.getMessage());
+                data.put(APP_NAME, app.length() > maxAppNameSize ? app.substring(0, maxAppNameSize) : app);
+                document.setData(mapper.valueToTree(data));
+                failedDocuments.add(document);
+            }
+            foxtrotClient.send(errorTableName, failedDocuments);
+            log.info("Successfully sent failed documents to debug table for exception :{}, {}",
+                    exception.getClass().getName(), exception.getMessage());
+        } catch (Exception ex) {
+            log.error("Error sending failed document list:" + app
+                    + " size:" + documents.size() + " sample:" + sample, ex);
+        }
     }
 
     @Override
@@ -152,6 +185,11 @@ public class FoxtrotProcessor extends StreamingProcessor {
         } catch (Exception e) {
             log.error("Error while closing foxtrot client", e);
         }
+    }
+
+    private Map<String, Object> readMapFromObject(Object obj) {
+        return mapper.convertValue(obj, new TypeReference<Map<String, Object>>() {
+        });
     }
 
     @Data

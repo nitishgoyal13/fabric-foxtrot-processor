@@ -25,6 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Data;
@@ -36,7 +38,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Processor(namespace = "global",
         name = "foxtrot-processor",
-        version = "1.3",
+        version = "1.5",
         cpu = 0.1,
         memory = 32,
         description = "A processor that publishes events to Foxtrot",
@@ -56,11 +58,13 @@ public class FoxtrotProcessor extends StreamingProcessor {
     private static final String ERROR = "ingestionException";
     private static final String ERROR_MESSAGE = "ingestionExceptionMessage";
     private static final String APP_NAME = "app";
+    private static final String ERRONEOUS_PATTERN = "\u0000";
     private String errorTableName;
     private int maxAppNameSize;
 
     private FoxtrotClient foxtrotClient;
     private ObjectMapper mapper;
+
 
     @Override
     public void initialize(String s, Properties global, Properties local,
@@ -124,38 +128,72 @@ public class FoxtrotProcessor extends StreamingProcessor {
                         Collectors.mapping(AppDocuments::getDocument, Collectors.toList())));
 
         log.info("Received {} payloads", eventSet.getEvents().size());
-        payloads.entrySet()
-                .forEach(k -> log.info(k.getKey() + ":" + k.getValue().size()));
+        payloads.forEach((key, value) -> log.info(key + ":" + value.size()));
 
         validEventRateMeter.mark(eventSet.getEvents().size());
 
-        payloads.entrySet()
-                .forEach(entry -> {
-                    final String app = entry.getKey();
-                    final List<Document> documents = entry.getValue();
-                    String sample = documents.isEmpty()
-                            ? "N/A" : documents.get(0).getData() == null
-                            ? "N/A" : documents.get(0).getData().toString();
-                    try {
-                        /* logging a dummy sample data from the list of documents, for debugging purposes */
-                        log.info("Sending to Foxtrot app:{} size:{} sample:{}",
-                                app, documents.size(), sample);
-                        foxtrotClient.send(app, documents);
-                        log.info("Published to Foxtrot successfully.  app:{} size:{} sample:{}",
-                                app, documents.size(), sample);
-                    } catch (Exception e) {
-                        log.error("Failed to send document list:" + app
-                                + " size:" + documents.size() + " sample:" + sample, e);
-                        ingestFailedDocuments(app, documents, sample, e);
-                        for (String message : MESSAGES_TO_IGNORE) {
-                            if (e.getMessage().contains(message)) {
-                                return;
-                            }
-                        }
-                        throw new RuntimeException(e);
+        payloads.forEach((app, documents) -> {
+            String sample = documents.isEmpty()
+                    ? "N/A" : documents.get(0).getData() == null
+                    ? "N/A" : documents.get(0).getData().toString();
+            try {
+                publishFoxtrotEvent(app, documents, sample);
+            } catch (Exception e) {
+                String appName = app;
+                try {
+                    // Retry event publish if it's erroneous app name
+                    if (isErroneousAppName(app)) {
+                        appName = sanitizeAppName(app);
+                        publishFoxtrotEvent(appName, documents, sample);
+                        return;
                     }
-                });
+                } catch (Exception ex) {
+                    onError(appName, documents, sample, ex);
+                    return;
+                }
+
+                onError(app, documents, sample, e);
+            }
+
+        });
         return null;
+    }
+
+    private void onError(String app, List<Document> documents, String sample, Exception ex) {
+        log.error("Failed to send document list:" + app
+                + " size:" + documents.size() + " sample:" + sample, ex);
+        ingestFailedDocuments(app, documents, sample, ex);
+        for (String message : MESSAGES_TO_IGNORE) {
+            if (ex.getMessage().contains(message)) {
+                return;
+            }
+        }
+        throw new RuntimeException(ex);
+    }
+
+    private void publishFoxtrotEvent(String app, List<Document> documents, String sample) throws Exception {
+        /* logging a dummy sample data from the list of documents, for debugging purposes */
+        log.info("Sending to Foxtrot app:{} size:{} sample:{}",
+                app, documents.size(), sample);
+        foxtrotClient.send(app, documents);
+        log.info("Published to Foxtrot successfully.  app:{} size:{} sample:{}",
+                app, documents.size(), sample);
+    }
+
+    private boolean isErroneousAppName(String appName) {
+        Pattern pattern = Pattern.compile(ERRONEOUS_PATTERN);
+        Matcher matcher = pattern.matcher(appName);
+        return matcher.find();
+    }
+
+    private String sanitizeAppName(String appName) {
+        Pattern pattern = Pattern.compile(ERRONEOUS_PATTERN);
+        Matcher matcher = pattern.matcher(appName);
+        while (matcher.find()) {
+            String erroneous = matcher.group();
+            appName = appName.replace(erroneous, "");
+        }
+        return appName;
     }
 
     private void ingestFailedDocuments(String app, List<Document> documents, String sample, Exception exception) {

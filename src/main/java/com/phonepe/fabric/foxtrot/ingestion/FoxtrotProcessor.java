@@ -139,14 +139,16 @@ public class FoxtrotProcessor extends StreamingProcessor {
             try {
                 publishFoxtrotEvent(app, documents, sample);
             } catch (Exception e) {
+                String appName = app;
                 try {
                     // Retry event publish if it's erroneous app name
                     if (isErroneousAppName(app)) {
-                        publishFoxtrotEvent(sanitizeAppName(app), documents, sample);
+                        appName = sanitizeAppName(app);
+                        publishFoxtrotEvent(appName, documents, sample);
                         return;
                     }
                 } catch (Exception ex) {
-                    onError(app, documents, sample, ex);
+                    onError(appName, documents, sample, ex);
                     return;
                 }
 

@@ -117,8 +117,9 @@ public class FoxtrotProcessor extends StreamingProcessor {
         totalEventRateMeter.mark(eventSet.getEvents().size());
 
         log.info("Received {} payloads", eventSet.getEvents().size());
-
         Map<String, List<AppDocument>> payloads = getValidAppDocuments(eventSet);
+
+        payloads.forEach((key, value) -> log.info(key + ":" + value.size()));
 
         Map<String, EventDocuments> appEventDocumentsMap = getAppEventDocumentsMap(payloads);
 

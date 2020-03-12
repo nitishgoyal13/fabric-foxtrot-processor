@@ -6,12 +6,12 @@
 
     <groupId>com.phonepe.dataplatform</groupId>
     <artifactId>fabric-foxtrot-ingestion</artifactId>
-    <version>1.5</version>
+    <version>1.6-SNAPSHOT</version>
 
     <properties>
         <fabric.version>1.0.0-SNAPSHOT</fabric.version>
         <lombok.version>1.16.6</lombok.version>
-        <foxtrot.client.version>0.2.7-SNAPSHOT</foxtrot.client.version>
+        <foxtrot.client.version>0.2.10-SNAPSHOT</foxtrot.client.version>
         <junit.version>4.12</junit.version>
     </properties>
 
@@ -61,7 +61,7 @@
         </dependency>
 
         <dependency>
-            <groupId>com.flipkart.foxtrot</groupId>
+            <groupId>com.foxtrot</groupId>
             <artifactId>foxtrot-client</artifactId>
             <version>${foxtrot.client.version}</version>
         </dependency>
@@ -128,6 +128,11 @@
             <id>phonepe-snapshots</id>
             <name>snapshots</name>
             <url>http://artifactory.phonepe.com/content/repositories/snapshots</url>
+        </repository>
+        <repository>
+            <id>clojars</id>
+            <name>Clojars repository</name>
+            <url>https://clojars.org/repo</url>
         </repository>
     </repositories>
 

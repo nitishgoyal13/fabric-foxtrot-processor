@@ -29,6 +29,7 @@ public class SidelineTopologyErrorHandler extends ErrorHandler {
     SidelineTopologyErrorHandler(String s, Properties global, Properties local,
                                  ComponentMetadata componentMetadata, FoxtrotClient foxtrotClient,
                                  ObjectMapper mapper) {
+        super(ErrorHandlerType.SIDELINE_TOPOLOGY_ERROR_HANDLER);
         this.errorTableName = ComponentPropertyReader.readString(local, global,
                 "errorTable", s, componentMetadata, "debug");
         this.foxtrotClient = foxtrotClient;

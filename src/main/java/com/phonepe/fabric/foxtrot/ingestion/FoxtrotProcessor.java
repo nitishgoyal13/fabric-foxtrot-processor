@@ -91,8 +91,9 @@ public class FoxtrotProcessor extends StreamingProcessor {
         }
 
         try {
-            log.info("Creating foxtrot client- {}:{} table- {}", foxtrotClientConfig.getHost(),
-                    foxtrotClientConfig.getPort(), foxtrotClientConfig.getTable());
+            log.info("Creating foxtrot client- {}:{} table- {} ignorableFailureMessagePatterns- {}",
+                    foxtrotClientConfig.getHost(), foxtrotClientConfig.getPort(), foxtrotClientConfig.getTable(),
+                    foxtrotClientConfig.getIgnorableFailureMessagePatterns());
             foxtrotClient = new FoxtrotClient(foxtrotClientConfig);
         } catch (Exception e) {
             log.error(String.format("Error creating foxtrot client with hosts%s, port:%s", foxtrotHost, foxtrotPort),
@@ -108,6 +109,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
         ErrorHandlerFactory errorHandlerFactory = new ErrorHandlerFactory(s, global, local, componentMetadata, foxtrotClient, mapper);
 
         this.errorHandler = errorHandlerFactory.get(ErrorHandlerType.valueOf(errorHandlerType));
+        log.info("Created foxtrot processor with error handler: {}", this.errorHandler.getHandlerType());
 
     }
 

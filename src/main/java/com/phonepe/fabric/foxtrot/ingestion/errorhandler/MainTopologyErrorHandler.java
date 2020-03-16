@@ -9,9 +9,13 @@ import java.util.List;
 @Slf4j
 public class MainTopologyErrorHandler extends ErrorHandler {
 
+    public MainTopologyErrorHandler(ErrorHandlerType handlerType) {
+        super(handlerType);
+    }
+
     /*
-        Do nothing for exceptions in main topology, just log the error
-     */
+            Do nothing for exceptions in main topology, just log the error
+         */
     @Override
     public void onError(String app, List<Document> documents, Exception ex) {
         String sampleDocument = Utils.getSampleDocument(documents);

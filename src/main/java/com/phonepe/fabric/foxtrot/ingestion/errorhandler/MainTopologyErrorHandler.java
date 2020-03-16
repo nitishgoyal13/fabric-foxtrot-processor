@@ -9,8 +9,8 @@ import java.util.List;
 @Slf4j
 public class MainTopologyErrorHandler extends ErrorHandler {
 
-    public MainTopologyErrorHandler(ErrorHandlerType handlerType) {
-        super(handlerType);
+    public MainTopologyErrorHandler() {
+        super(ErrorHandlerType.MAIN_TOPOLOGY_ERROR_HANDLER);
     }
 
     /*

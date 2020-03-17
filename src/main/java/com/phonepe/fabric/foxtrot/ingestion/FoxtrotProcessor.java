@@ -125,6 +125,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
         foxtrotClientConfig.setPort(foxtrotPort);
         foxtrotClientConfig.setTable("dummy");
         foxtrotClientConfig.setBatchSize(batchSize);
+        foxtrotClientConfig.setKeepAliveTimeMillis(keepAliveTimeMillis);
         foxtrotClientConfig.setMaxConnections(maxConnections);
         foxtrotClientConfig.setConnectTimeoutMs(connectTimeoutMs);
         foxtrotClientConfig.setOpTimeoutMs(opTimeoutMs);

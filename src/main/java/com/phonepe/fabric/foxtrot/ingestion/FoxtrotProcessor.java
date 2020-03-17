@@ -49,7 +49,9 @@ import static com.phonepe.fabric.foxtrot.ingestion.utils.Utils.*;
         description = "A processor that publishes events to Foxtrot",
         processorType = ProcessorType.EVENT_DRIVEN,
         requiredProperties = {"foxtrot.host", "foxtrot.port", "errorHandler"},
-        optionalProperties = {"errorTable", "ignorableFailureMessagePatterns"})
+        optionalProperties = {"errorTable", "ignorableFailureMessagePatterns", "foxtrot.client.batchSize",
+                "foxtrot.client.maxConnections", "foxtrot.client.keepAliveTimeMillis", "foxtrot.client.connectTimeoutMs",
+                "foxtrot.client.opTimeoutMs", "foxtrot.client.callTimeOutMs"})
 @Slf4j
 public class FoxtrotProcessor extends StreamingProcessor {
 
@@ -71,35 +73,17 @@ public class FoxtrotProcessor extends StreamingProcessor {
                            ComponentMetadata componentMetadata) throws InitializationException {
 
         /* foxtrot client setup */
-        String foxtrotHost = ComponentPropertyReader.readString(local, global,
-                "foxtrot.host", s, componentMetadata, "localhost");
-        Integer foxtrotPort = ComponentPropertyReader.readInteger(local, global,
-                "foxtrot.port", s, componentMetadata, 80);
-        String ignorableFailureMessagePatterns = ComponentPropertyReader.readString(local, global,
-                "ignorableFailureMessagePatterns", s, componentMetadata, null);
-
-
-        FoxtrotClientConfig foxtrotClientConfig = new FoxtrotClientConfig();
-        foxtrotClientConfig.setClientType(ClientType.sync);
-        foxtrotClientConfig.setHost(foxtrotHost);
-        foxtrotClientConfig.setPort(foxtrotPort);
-        foxtrotClientConfig.setTable("dummy");
-
-        if (Strings.isNotBlank(ignorableFailureMessagePatterns)) {
-            List<String> ignorableFailureMessagePatternList = Arrays.asList(ignorableFailureMessagePatterns.split(","));
-            foxtrotClientConfig.setIgnorableFailureMessagePatterns(ignorableFailureMessagePatternList);
-        }
+        FoxtrotClientConfig foxtrotClientConfig = getFoxtrotClientConfig(s, global, local, componentMetadata);
 
         try {
-            log.info("Creating foxtrot client- {}:{} table- {} ignorableFailureMessagePatterns- {}",
-                    foxtrotClientConfig.getHost(), foxtrotClientConfig.getPort(), foxtrotClientConfig.getTable(),
-                    foxtrotClientConfig.getIgnorableFailureMessagePatterns());
+            log.info("Creating foxtrot client with config - {}", foxtrotClientConfig);
             foxtrotClient = new FoxtrotClient(foxtrotClientConfig);
         } catch (Exception e) {
-            log.error(String.format("Error creating foxtrot client with hosts%s, port:%s", foxtrotHost, foxtrotPort),
-                    e);
+            log.error(String.format("Error creating foxtrot client with hosts%s, port:%s",
+                    foxtrotClientConfig.getHost(), foxtrotClientConfig.getPort()), e);
             throw new RuntimeException(e);
         }
+
         mapper = new ObjectMapper();
         validNodeFilter = new ValidNodeFilter();
 
@@ -111,6 +95,46 @@ public class FoxtrotProcessor extends StreamingProcessor {
         this.errorHandler = errorHandlerFactory.get(ErrorHandlerType.valueOf(errorHandlerType));
         log.info("Created foxtrot processor with error handler: {}", this.errorHandler.getHandlerType());
 
+    }
+
+    private FoxtrotClientConfig getFoxtrotClientConfig(String s, Properties global, Properties local, ComponentMetadata componentMetadata) {
+        String foxtrotHost = ComponentPropertyReader.readString(local, global,
+                "foxtrot.host", s, componentMetadata, "localhost");
+        Integer foxtrotPort = ComponentPropertyReader.readInteger(local, global,
+                "foxtrot.port", s, componentMetadata, 80);
+        String ignorableFailureMessagePatterns = ComponentPropertyReader.readString(local, global,
+                "ignorableFailureMessagePatterns", s, componentMetadata, null);
+
+        Integer batchSize = ComponentPropertyReader.readInteger(local, global,
+                "foxtrot.client.batchSize", s, componentMetadata, 200);
+
+        Integer maxConnections = ComponentPropertyReader.readInteger(local, global,
+                "foxtrot.client.maxConnections", s, componentMetadata, 10);
+        Integer keepAliveTimeMillis = ComponentPropertyReader.readInteger(local, global,
+                "foxtrot.client.keepAliveTimeMillis", s, componentMetadata, 30000);
+        Integer connectTimeoutMs = ComponentPropertyReader.readInteger(local, global,
+                "foxtrot.client.connectTimeoutMs", s, componentMetadata, 10);
+        Integer opTimeoutMs = ComponentPropertyReader.readInteger(local, global,
+                "foxtrot.client.opTimeoutMs", s, componentMetadata, 10000);
+        Integer callTimeOutMs = ComponentPropertyReader.readInteger(local, global,
+                "foxtrot.client.callTimeOutMs", s, componentMetadata, 5000);
+
+        FoxtrotClientConfig foxtrotClientConfig = new FoxtrotClientConfig();
+        foxtrotClientConfig.setClientType(ClientType.sync);
+        foxtrotClientConfig.setHost(foxtrotHost);
+        foxtrotClientConfig.setPort(foxtrotPort);
+        foxtrotClientConfig.setTable("dummy");
+        foxtrotClientConfig.setBatchSize(batchSize);
+        foxtrotClientConfig.setMaxConnections(maxConnections);
+        foxtrotClientConfig.setConnectTimeoutMs(connectTimeoutMs);
+        foxtrotClientConfig.setOpTimeoutMs(opTimeoutMs);
+        foxtrotClientConfig.setCallTimeOutMs(callTimeOutMs);
+
+        if (Strings.isNotBlank(ignorableFailureMessagePatterns)) {
+            List<String> ignorableFailureMessagePatternList = Arrays.asList(ignorableFailureMessagePatterns.split(","));
+            foxtrotClientConfig.setIgnorableFailureMessagePatterns(ignorableFailureMessagePatternList);
+        }
+        return foxtrotClientConfig;
     }
 
     @Override

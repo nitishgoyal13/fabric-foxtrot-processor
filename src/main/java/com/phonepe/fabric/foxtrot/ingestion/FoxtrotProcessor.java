@@ -156,6 +156,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
             processEventDocuments(failedEvents, app, eventDocuments);
         });
 
+        //TODO change to debug log level
         log.info("Returning event set with failed events : {}", failedEvents);
         return EventSet.eventFromEventBuilder()
                 .partitionId(eventSet.getPartitionId())
@@ -186,6 +187,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
             }
 
             errorHandler.onError(app, documents, e);
+            //TODO change to debug log level
             log.info("Adding corresponding events to failed events list : {}", events);
             failedEvents.addAll(events);
         }

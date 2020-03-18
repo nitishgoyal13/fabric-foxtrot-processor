@@ -10,6 +10,7 @@ import io.appform.core.hystrix.CommandFactory;
 import io.appform.core.hystrix.HandlerAdapter;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -29,7 +30,9 @@ public class FoxtrotHystrixClient extends FoxtrotClient {
                                 .build())
                         .circuitBreaker(new CircuitBreakerConfig())
                         .metrics(new MetricsConfig())
-                        .build()).build();
+                        .build())
+                .commands(new ArrayList<>())
+                .build();
         HystrixConfigurationFactory.init(hystrixConfig);
     }
 

@@ -19,10 +19,13 @@ public class FoxtrotHystrixClient extends FoxtrotClient {
 
     public FoxtrotHystrixClient(FoxtrotClientConfig config, int concurrency, int timeout) throws Exception {
         super(config);
-        
+
         HystrixConfig hystrixConfig = HystrixConfig.builder()
                 .defaultConfig(HystrixDefaultConfig.builder()
                         .threadPool(ThreadPoolConfig.builder()
+                                .semaphoreIsolation(false)
+                                .maxRequestQueueSize(128)
+                                .dynamicRequestQueueSize(16)
                                 .concurrency(concurrency)
                                 .timeout(timeout)
                                 .build())

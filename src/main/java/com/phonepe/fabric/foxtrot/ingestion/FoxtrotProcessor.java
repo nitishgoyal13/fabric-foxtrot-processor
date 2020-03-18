@@ -83,8 +83,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
             log.info("Creating foxtrot client with config - {}", foxtrotClientConfig);
             foxtrotClient = new FoxtrotHystrixClient(foxtrotClientConfig, foxtrotClientConfig.getMaxConnections(), timeout);
         } catch (Exception e) {
-            log.error(String.format("Error creating foxtrot client with hosts%s, port:%s",
-                    foxtrotClientConfig.getHost(), foxtrotClientConfig.getPort()), e);
+            log.error(String.format("Error creating foxtrot client with config %s", foxtrotClientConfig), e);
             throw new RuntimeException(e);
         }
 

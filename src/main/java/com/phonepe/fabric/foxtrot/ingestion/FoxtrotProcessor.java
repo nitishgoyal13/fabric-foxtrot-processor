@@ -120,8 +120,6 @@ public class FoxtrotProcessor extends StreamingProcessor {
                 "foxtrot.client.connectTimeoutMs", s, componentMetadata, 10);
         Integer opTimeoutMs = ComponentPropertyReader.readInteger(local, global,
                 "foxtrot.client.opTimeoutMs", s, componentMetadata, 10000);
-        Integer callTimeOutMs = ComponentPropertyReader.readInteger(local, global,
-                "foxtrot.client.callTimeOutMs", s, componentMetadata, 5000);
 
         FoxtrotClientConfig foxtrotClientConfig = new FoxtrotClientConfig();
         foxtrotClientConfig.setClientType(ClientType.sync);
@@ -133,7 +131,6 @@ public class FoxtrotProcessor extends StreamingProcessor {
         foxtrotClientConfig.setMaxConnections(maxConnections);
         foxtrotClientConfig.setConnectTimeoutMs(connectTimeoutMs);
         foxtrotClientConfig.setOpTimeoutMs(opTimeoutMs);
-        foxtrotClientConfig.setCallTimeOutMs(callTimeOutMs);
 
         if (Strings.isNotBlank(ignorableFailureMessagePatterns)) {
             List<String> ignorableFailureMessagePatternList = Arrays.asList(ignorableFailureMessagePatterns.split(","));

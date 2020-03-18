@@ -19,6 +19,8 @@ import com.olacabs.fabric.model.event.Event;
 import com.olacabs.fabric.model.event.EventSet;
 import com.olacabs.fabric.model.processor.Processor;
 import com.olacabs.fabric.model.processor.ProcessorType;
+import com.phonepe.fabric.foxtrot.ingestion.client.AsyncWorker;
+import com.phonepe.fabric.foxtrot.ingestion.client.FoxtrotHystrixClient;
 import com.phonepe.fabric.foxtrot.ingestion.errorhandler.ErrorHandler;
 import com.phonepe.fabric.foxtrot.ingestion.errorhandler.ErrorHandler.ErrorHandlerType;
 import com.phonepe.fabric.foxtrot.ingestion.errorhandler.ErrorHandlerFactory;
@@ -31,6 +33,7 @@ import org.apache.logging.log4j.util.Strings;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -51,7 +54,7 @@ import static com.phonepe.fabric.foxtrot.ingestion.utils.Utils.*;
         requiredProperties = {"foxtrot.host", "foxtrot.port", "errorHandler"},
         optionalProperties = {"errorTable", "ignorableFailureMessagePatterns", "foxtrot.client.batchSize",
                 "foxtrot.client.maxConnections", "foxtrot.client.keepAliveTimeMillis", "foxtrot.client.connectTimeoutMs",
-                "foxtrot.client.opTimeoutMs", "foxtrot.client.callTimeOutMs"})
+                "foxtrot.client.opTimeoutMs", "foxtrot.client.timeout"})
 @Slf4j
 public class FoxtrotProcessor extends StreamingProcessor {
 
@@ -65,7 +68,6 @@ public class FoxtrotProcessor extends StreamingProcessor {
 
     private FoxtrotClient foxtrotClient;
     private ObjectMapper mapper;
-    private ValidNodeFilter validNodeFilter;
     private ErrorHandler errorHandler;
 
     @Override
@@ -75,9 +77,11 @@ public class FoxtrotProcessor extends StreamingProcessor {
         /* foxtrot client setup */
         FoxtrotClientConfig foxtrotClientConfig = getFoxtrotClientConfig(s, global, local, componentMetadata);
 
+        Integer timeout = ComponentPropertyReader.readInteger(local, global,
+                "foxtrot.client.timeout", s, componentMetadata, 2000);
         try {
             log.info("Creating foxtrot client with config - {}", foxtrotClientConfig);
-            foxtrotClient = new FoxtrotClient(foxtrotClientConfig);
+            foxtrotClient = new FoxtrotHystrixClient(foxtrotClientConfig, foxtrotClientConfig.getMaxConnections(), timeout);
         } catch (Exception e) {
             log.error(String.format("Error creating foxtrot client with hosts%s, port:%s",
                     foxtrotClientConfig.getHost(), foxtrotClientConfig.getPort()), e);
@@ -85,7 +89,6 @@ public class FoxtrotProcessor extends StreamingProcessor {
         }
 
         mapper = new ObjectMapper();
-        validNodeFilter = new ValidNodeFilter();
 
         String errorHandlerType = ComponentPropertyReader.readString(local, global,
                 "errorHandler", s, componentMetadata, SIDELINE_TOPOLOGY_ERROR_HANDLER.name());
@@ -150,11 +153,42 @@ public class FoxtrotProcessor extends StreamingProcessor {
 
         Map<String, EventDocuments> appEventDocumentsMap = getAppEventDocumentsMap(payloads);
 
-        List<Event> failedEvents = new ArrayList<>();
+        List<Event> failedEvents = Collections.synchronizedList(new ArrayList<>());
 
-        appEventDocumentsMap.forEach((app, eventDocuments) -> {
-            processEventDocuments(failedEvents, app, eventDocuments);
-        });
+        appEventDocumentsMap
+                .forEach((app, eventDocuments) -> AsyncWorker.INSTANCE.execute(() -> {
+                    List<Document> documents = eventDocuments.getDocuments();
+                    List<Event> events = eventDocuments.getEvents();
+
+                    String sample = getSampleDocument(documents);
+                    try {
+                        publishFoxtrotEvent(app, documents, sample);
+                    } catch (Exception e) {
+                        String appName = app;
+                        try {
+                            // Retry event publish if it's erroneous app name
+                            if (isErroneousAppName(app)) {
+                                appName = sanitizeAppName(app);
+                                publishFoxtrotEvent(appName, documents, sample);
+                            }
+                        } catch (Exception ex) {
+                            errorHandler.onError(appName, documents, ex);
+                            failedEvents.addAll(eventDocuments.getEvents());
+                        }
+
+                        errorHandler.onError(app, documents, e);
+                        log.debug("Adding corresponding events to failed events list : {}", events);
+                        failedEvents.addAll(eventDocuments.getEvents());
+                    }
+                }));
+
+        try {
+            AsyncWorker.INSTANCE.awaitTermination(30, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            log.error("Error while awaiting termination for async worker", e);
+            throw new RuntimeException(e.getMessage());
+        }
+
 
         log.debug("Returning event set with failed events : {}", failedEvents);
         return EventSet.eventFromEventBuilder()
@@ -207,7 +241,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
     private Map<String, List<AppDocument>> getValidAppDocuments(EventSet eventSet) {
         AtomicInteger validDocumentCount = new AtomicInteger();
         Map<String, List<AppDocument>> payloads = eventSet.getEvents()
-                .stream()
+                .parallelStream()
                 .map(event -> {
 
                     // map event data (bytes) to Tree Node
@@ -218,7 +252,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
                         log.error("Unable to read payload.data as a tree", e);
                         throw new RuntimeException(e);
                     }
-
+                    ValidNodeFilter validNodeFilter = new ValidNodeFilter();
                     // filter invalid data
                     if (validNodeFilter.test(jsonNode)) {
                         // map them to AppDocument

@@ -13,8 +13,8 @@ public enum AsyncWorker implements ExecutorService {
     private final ExecutorService worker;
 
     private AsyncWorker() {
-        worker = new ThreadPoolExecutor(Runtime.getRuntime().availableProcessors(),
-                Runtime.getRuntime().availableProcessors() * 4, 1, TimeUnit.MINUTES,
+        worker = new ThreadPoolExecutor(4,
+                16, 1, TimeUnit.MINUTES,
                 new LinkedBlockingQueue<Runnable>(),
                 new ThreadFactoryBuilder().setNameFormat("foxtrot-processor-async-worker-%d").build());
     }

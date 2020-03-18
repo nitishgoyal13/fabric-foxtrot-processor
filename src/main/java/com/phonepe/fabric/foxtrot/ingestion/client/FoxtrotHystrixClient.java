@@ -3,9 +3,7 @@ package com.phonepe.fabric.foxtrot.ingestion.client;
 import com.flipkart.foxtrot.client.Document;
 import com.flipkart.foxtrot.client.FoxtrotClient;
 import com.flipkart.foxtrot.client.FoxtrotClientConfig;
-import com.hystrix.configurator.config.HystrixConfig;
-import com.hystrix.configurator.config.HystrixDefaultConfig;
-import com.hystrix.configurator.config.ThreadPoolConfig;
+import com.hystrix.configurator.config.*;
 import com.hystrix.configurator.core.HystrixConfigurationFactory;
 import com.netflix.hystrix.exception.HystrixRuntimeException;
 import io.appform.core.hystrix.CommandFactory;
@@ -29,6 +27,8 @@ public class FoxtrotHystrixClient extends FoxtrotClient {
                                 .concurrency(concurrency)
                                 .timeout(timeout)
                                 .build())
+                        .circuitBreaker(new CircuitBreakerConfig())
+                        .metrics(new MetricsConfig())
                         .build()).build();
         HystrixConfigurationFactory.init(hystrixConfig);
     }

@@ -161,6 +161,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
 
                     String sample = getSampleDocument(documents);
                     try {
+                        log.info("Thread id:  {}", Thread.currentThread().getId());
                         publishFoxtrotEvent(app, documents, sample);
                     } catch (Exception e) {
                         String appName = app;

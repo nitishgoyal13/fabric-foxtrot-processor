@@ -48,7 +48,7 @@ import static com.phonepe.fabric.foxtrot.ingestion.utils.Utils.*;
  */
 @Processor(namespace = "global",
         name = "foxtrot-processor",
-        version = "1.6-SNAPSHOT",
+        version = "1.6",
         cpu = 0.1,
         memory = 32,
         description = "A processor that publishes events to Foxtrot",

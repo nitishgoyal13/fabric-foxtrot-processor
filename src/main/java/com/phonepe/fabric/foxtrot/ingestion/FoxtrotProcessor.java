@@ -184,7 +184,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
     }
 
     private Callable<Boolean> ingestionTask(List<Event> failedEvents, Map.Entry<String, EventDocuments> entry) {
-        return (Callable<Boolean>) () -> {
+        return () -> {
             String app = entry.getKey();
             EventDocuments eventDocuments = entry.getValue();
             List<Document> documents = eventDocuments.getDocuments();

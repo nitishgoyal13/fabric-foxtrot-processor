@@ -11,7 +11,7 @@
     <properties>
         <fabric.version>1.0.0-SNAPSHOT</fabric.version>
         <lombok.version>1.16.6</lombok.version>
-        <foxtrot.client.version>0.2.10</foxtrot.client.version>
+        <foxtrot.client.version>0.2.11</foxtrot.client.version>
         <junit.version>4.12</junit.version>
     </properties>
 

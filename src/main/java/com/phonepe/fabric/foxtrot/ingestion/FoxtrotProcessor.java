@@ -33,7 +33,9 @@ import org.apache.logging.log4j.util.Strings;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -154,47 +156,66 @@ public class FoxtrotProcessor extends StreamingProcessor {
 
         List<Event> failedEvents = Collections.synchronizedList(new ArrayList<>());
 
-        appEventDocumentsMap
-                .forEach((app, eventDocuments) -> AsyncWorker.INSTANCE.execute(() -> {
-                    List<Document> documents = eventDocuments.getDocuments();
-                    List<Event> events = eventDocuments.getEvents();
-
-                    String sample = getSampleDocument(documents);
-                    try {
-                        log.info("Thread id:  {}", Thread.currentThread().getId());
-                        publishFoxtrotEvent(app, documents, sample);
-                    } catch (Exception e) {
-                        String appName = app;
-                        try {
-                            // Retry event publish if it's erroneous app name
-                            if (isErroneousAppName(app)) {
-                                appName = sanitizeAppName(app);
-                                publishFoxtrotEvent(appName, documents, sample);
-                            }
-                        } catch (Exception ex) {
-                            errorHandler.onError(appName, documents, ex);
-                            failedEvents.addAll(eventDocuments.getEvents());
-                        }
-
-                        errorHandler.onError(app, documents, e);
-                        log.debug("Adding corresponding events to failed events list : {}", events);
-                        failedEvents.addAll(eventDocuments.getEvents());
-                    }
-                }));
+        List<Callable<Boolean>> tasks = appEventDocumentsMap.entrySet()
+                .stream()
+                .map(entry -> ingestionTask(failedEvents, entry))
+                .collect(Collectors.toList());
 
         try {
-            AsyncWorker.INSTANCE.awaitTermination(30, TimeUnit.SECONDS);
+            List<Future<Boolean>> futures = AsyncWorker.INSTANCE.invokeAll(tasks);
+            futures.forEach(future -> {
+                try {
+                    future.get();
+                } catch (InterruptedException | ExecutionException e) {
+                    log.error("Error invoking ingestion tasks: ",e);
+                    throw new RuntimeException(e.getMessage());
+                }
+            });
         } catch (InterruptedException e) {
-            log.error("Error while awaiting termination for async worker", e);
+            log.error("Error invoking ingestion tasks: ",e);
             throw new RuntimeException(e.getMessage());
         }
-
 
         log.debug("Returning event set with failed events : {}", failedEvents);
         return EventSet.eventFromEventBuilder()
                 .partitionId(eventSet.getPartitionId())
                 .events(failedEvents)
                 .build();
+    }
+
+    private Callable<Boolean> ingestionTask(List<Event> failedEvents, Map.Entry<String, EventDocuments> entry) {
+        return (Callable<Boolean>) () -> {
+            String app = entry.getKey();
+            EventDocuments eventDocuments = entry.getValue();
+            List<Document> documents = eventDocuments.getDocuments();
+            List<Event> events = eventDocuments.getEvents();
+
+            String sample = getSampleDocument(documents);
+            try {
+                log.info("Thread id:  {}", Thread.currentThread().getId());
+                publishFoxtrotEvent(app, documents, sample);
+                return true;
+            } catch (Exception e) {
+                String appName = app;
+                try {
+                    // Retry event publish if it's erroneous app name
+                    if (isErroneousAppName(app)) {
+                        appName = sanitizeAppName(app);
+                        publishFoxtrotEvent(appName, documents, sample);
+                        return true;
+                    }
+                } catch (Exception ex) {
+                    errorHandler.onError(appName, documents, ex);
+                    failedEvents.addAll(eventDocuments.getEvents());
+                    return false;
+                }
+
+                errorHandler.onError(app, documents, e);
+                log.debug("Adding corresponding events to failed events list : {}", events);
+                failedEvents.addAll(eventDocuments.getEvents());
+                return false;
+            }
+        };
     }
 
     private Map<String, EventDocuments> getAppEventDocumentsMap(Map<String, List<AppDocument>> payloads) {

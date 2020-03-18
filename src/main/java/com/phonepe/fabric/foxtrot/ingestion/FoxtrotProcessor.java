@@ -56,7 +56,7 @@ import static com.phonepe.fabric.foxtrot.ingestion.utils.Utils.*;
         requiredProperties = {"foxtrot.host", "foxtrot.port", "errorHandler"},
         optionalProperties = {"errorTable", "ignorableFailureMessagePatterns", "foxtrot.client.batchSize",
                 "foxtrot.client.maxConnections", "foxtrot.client.keepAliveTimeMillis", "foxtrot.client.connectTimeoutMs",
-                "foxtrot.client.opTimeoutMs", "foxtrot.client.timeout"})
+                "foxtrot.client.opTimeoutMs", "foxtrot.client.concurrency", "foxtrot.client.timeout"})
 @Slf4j
 public class FoxtrotProcessor extends StreamingProcessor {
 
@@ -79,11 +79,13 @@ public class FoxtrotProcessor extends StreamingProcessor {
         /* foxtrot client setup */
         FoxtrotClientConfig foxtrotClientConfig = getFoxtrotClientConfig(s, global, local, componentMetadata);
 
+        Integer concurrency = ComponentPropertyReader.readInteger(local, global,
+                "foxtrot.client.concurrency", s, componentMetadata, 8);
         Integer timeout = ComponentPropertyReader.readInteger(local, global,
                 "foxtrot.client.timeout", s, componentMetadata, 2000);
         try {
             log.info("Creating foxtrot client with config - {}", foxtrotClientConfig);
-            foxtrotClient = new FoxtrotHystrixClient(foxtrotClientConfig, foxtrotClientConfig.getMaxConnections(), timeout);
+            foxtrotClient = new FoxtrotHystrixClient(foxtrotClientConfig, concurrency, timeout);
         } catch (Exception e) {
             log.error(String.format("Error creating foxtrot client with config %s", foxtrotClientConfig), e);
             throw new RuntimeException(e);
@@ -164,12 +166,12 @@ public class FoxtrotProcessor extends StreamingProcessor {
                 try {
                     future.get();
                 } catch (InterruptedException | ExecutionException e) {
-                    log.error("Error invoking ingestion tasks: ",e);
+                    log.error("Error invoking ingestion tasks: ", e);
                     throw new RuntimeException(e.getMessage());
                 }
             });
         } catch (InterruptedException e) {
-            log.error("Error invoking ingestion tasks: ",e);
+            log.error("Error invoking ingestion tasks: ", e);
             throw new RuntimeException(e.getMessage());
         }
 

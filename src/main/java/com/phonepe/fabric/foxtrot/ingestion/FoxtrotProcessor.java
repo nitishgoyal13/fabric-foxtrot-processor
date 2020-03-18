@@ -197,34 +197,6 @@ public class FoxtrotProcessor extends StreamingProcessor {
                 .build();
     }
 
-    private void processEventDocuments(List<Event> failedEvents, String app, EventDocuments eventDocuments) {
-        List<Document> documents = eventDocuments.getDocuments();
-        List<Event> events = eventDocuments.getEvents();
-
-        String sample = getSampleDocument(documents);
-        try {
-            publishFoxtrotEvent(app, documents, sample);
-        } catch (Exception e) {
-            String appName = app;
-            try {
-                // Retry event publish if it's erroneous app name
-                if (isErroneousAppName(app)) {
-                    appName = sanitizeAppName(app);
-                    publishFoxtrotEvent(appName, documents, sample);
-                    return;
-                }
-            } catch (Exception ex) {
-                errorHandler.onError(appName, documents, ex);
-                failedEvents.addAll(eventDocuments.getEvents());
-                return;
-            }
-
-            errorHandler.onError(app, documents, e);
-            log.debug("Adding corresponding events to failed events list : {}", events);
-            failedEvents.addAll(events);
-        }
-    }
-
     private Map<String, EventDocuments> getAppEventDocumentsMap(Map<String, List<AppDocument>> payloads) {
         Map<String, EventDocuments> appDocumentList = new HashMap<>();
         payloads.forEach(((app, appDocuments) -> {

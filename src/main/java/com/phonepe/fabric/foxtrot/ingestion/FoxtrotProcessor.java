@@ -56,7 +56,7 @@ import org.apache.logging.log4j.util.Strings;
  */
 @Processor(namespace = "global",
         name = "foxtrot-processor",
-        version = "1.6",
+        version = "1.7",
         cpu = 0.1,
         memory = 32,
         description = "A processor that publishes events to Foxtrot",

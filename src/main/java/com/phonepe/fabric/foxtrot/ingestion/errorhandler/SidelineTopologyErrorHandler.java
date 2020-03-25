@@ -8,11 +8,9 @@ import com.olacabs.fabric.compute.util.ComponentPropertyReader;
 import com.olacabs.fabric.model.common.ComponentMetadata;
 import com.phonepe.fabric.foxtrot.ingestion.utils.Utils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.logging.log4j.util.Strings;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 
 import static com.phonepe.fabric.foxtrot.ingestion.FoxtrotProcessor.APP_NAME;
 
@@ -52,7 +50,10 @@ public class SidelineTopologyErrorHandler extends ErrorHandler {
             for (Document document : documents) {
                 Map<String, Object> data = readMapFromObject(document.getData());
                 data.put(ERROR, exception.getClass().getName());
-                data.put(ERROR_MESSAGE, exception.getMessage());
+                data.put(ERROR_MESSAGE, Objects.nonNull(exception.getCause())
+                        && Strings.isNotBlank(exception.getCause().getMessage())
+                        ? exception.getCause().getMessage()
+                        : exception.getMessage());
                 data.put(APP_NAME, app);
                 document.setData(mapper.valueToTree(data));
                 failedDocuments.add(document);

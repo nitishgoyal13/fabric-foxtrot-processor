@@ -1,5 +1,10 @@
 package com.phonepe.fabric.foxtrot.ingestion;
 
+import static com.phonepe.fabric.foxtrot.ingestion.errorhandler.ErrorHandler.ErrorHandlerType.SIDELINE_TOPOLOGY_ERROR_HANDLER;
+import static com.phonepe.fabric.foxtrot.ingestion.utils.Utils.getSampleDocument;
+import static com.phonepe.fabric.foxtrot.ingestion.utils.Utils.isErroneousAppName;
+import static com.phonepe.fabric.foxtrot.ingestion.utils.Utils.sanitizeAppName;
+
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
@@ -25,37 +30,41 @@ import com.phonepe.fabric.foxtrot.ingestion.errorhandler.ErrorHandler;
 import com.phonepe.fabric.foxtrot.ingestion.errorhandler.ErrorHandler.ErrorHandlerType;
 import com.phonepe.fabric.foxtrot.ingestion.errorhandler.ErrorHandlerFactory;
 import com.phonepe.fabric.foxtrot.ingestion.filter.ValidNodeFilter;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.logging.log4j.util.Strings;
-
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import static com.phonepe.fabric.foxtrot.ingestion.errorhandler.ErrorHandler.ErrorHandlerType.SIDELINE_TOPOLOGY_ERROR_HANDLER;
-import static com.phonepe.fabric.foxtrot.ingestion.utils.Utils.*;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.logging.log4j.util.Strings;
 
 /**
  * A Processor implementation that publishes events to foxtrot
  */
 @Processor(namespace = "global",
         name = "foxtrot-processor",
-        version = "1.6",
+        version = "1.7",
         cpu = 0.1,
         memory = 32,
         description = "A processor that publishes events to Foxtrot",
         processorType = ProcessorType.EVENT_DRIVEN,
         requiredProperties = {"foxtrot.host", "foxtrot.port", "errorHandler"},
         optionalProperties = {"errorTable", "ignorableFailureMessagePatterns", "foxtrot.client.batchSize",
-                "foxtrot.client.maxConnections", "foxtrot.client.keepAliveTimeMillis", "foxtrot.client.connectTimeoutMs",
+                "foxtrot.client.maxConnections", "foxtrot.client.keepAliveTimeMillis",
+                "foxtrot.client.connectTimeoutMs",
                 "foxtrot.client.opTimeoutMs", "foxtrot.client.concurrency", "foxtrot.client.timeout"})
 @Slf4j
 public class FoxtrotProcessor extends StreamingProcessor {
@@ -74,7 +83,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
 
     @Override
     public void initialize(String s, Properties global, Properties local,
-                           ComponentMetadata componentMetadata) throws InitializationException {
+            ComponentMetadata componentMetadata) throws InitializationException {
 
         /* foxtrot client setup */
         FoxtrotClientConfig foxtrotClientConfig = getFoxtrotClientConfig(s, global, local, componentMetadata);
@@ -96,14 +105,16 @@ public class FoxtrotProcessor extends StreamingProcessor {
         String errorHandlerType = ComponentPropertyReader.readString(local, global,
                 "errorHandler", s, componentMetadata, SIDELINE_TOPOLOGY_ERROR_HANDLER.name());
 
-        ErrorHandlerFactory errorHandlerFactory = new ErrorHandlerFactory(s, global, local, componentMetadata, foxtrotClient, mapper);
+        ErrorHandlerFactory errorHandlerFactory = new ErrorHandlerFactory(s, global, local, componentMetadata,
+                foxtrotClient, mapper);
 
         this.errorHandler = errorHandlerFactory.get(ErrorHandlerType.valueOf(errorHandlerType));
         log.info("Created foxtrot processor with error handler: {}", this.errorHandler.getHandlerType());
 
     }
 
-    private FoxtrotClientConfig getFoxtrotClientConfig(String s, Properties global, Properties local, ComponentMetadata componentMetadata) {
+    private FoxtrotClientConfig getFoxtrotClientConfig(String s, Properties global, Properties local,
+            ComponentMetadata componentMetadata) {
         String foxtrotHost = ComponentPropertyReader.readString(local, global,
                 "foxtrot.host", s, componentMetadata, "localhost");
         Integer foxtrotPort = ComponentPropertyReader.readInteger(local, global,
@@ -175,7 +186,9 @@ public class FoxtrotProcessor extends StreamingProcessor {
             throw new RuntimeException(e.getMessage());
         }
 
-        log.debug("Returning event set with failed events : {}", failedEvents);
+        if (log.isDebugEnabled()) {
+            log.debug("Returning event set with failed events : {}", failedEvents);
+        }
         return EventSet.eventFromEventBuilder()
                 .partitionId(eventSet.getPartitionId())
                 .events(failedEvents)
@@ -209,7 +222,9 @@ public class FoxtrotProcessor extends StreamingProcessor {
                 }
 
                 errorHandler.onError(app, documents, e);
-                log.debug("Adding corresponding events to failed events list : {}", events);
+                if (log.isDebugEnabled()) {
+                    log.debug("Adding corresponding events to failed events list : {}", events);
+                }
                 failedEvents.addAll(eventDocuments.getEvents());
                 return false;
             }
@@ -251,7 +266,8 @@ public class FoxtrotProcessor extends StreamingProcessor {
                                 .builder()
                                 .event(event)
                                 .app(jsonNode.get(APP_NAME).asText())
-                                .document(new Document(jsonNode.get("id").asText(), jsonNode.get("time").asLong(), jsonNode))
+                                .document(new Document(jsonNode.get("id").asText(), jsonNode.get("time").asLong(),
+                                        jsonNode))
                                 .build();
                     }
                     return null;
@@ -268,8 +284,6 @@ public class FoxtrotProcessor extends StreamingProcessor {
 
     private void publishFoxtrotEvent(String app, List<Document> documents, String sample) throws Exception {
         /* logging a dummy sample data from the list of documents, for debugging purposes */
-        log.info("Sending to Foxtrot app:{} size:{} sample:{}",
-                app, documents.size(), sample);
         foxtrotClient.send(app, documents);
         log.info("Published to Foxtrot successfully.  app:{} size:{} sample:{}",
                 app, documents.size(), sample);
@@ -298,6 +312,7 @@ public class FoxtrotProcessor extends StreamingProcessor {
     @Data
     @Builder
     public static class EventDocuments {
+
         List<Document> documents;
         List<Event> events;
     }

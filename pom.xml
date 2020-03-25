@@ -6,7 +6,7 @@
 
     <groupId>com.phonepe.dataplatform</groupId>
     <artifactId>fabric-foxtrot-ingestion</artifactId>
-    <version>1.6</version>
+    <version>1.7</version>
 
     <properties>
         <fabric.version>1.0.0-SNAPSHOT</fabric.version>

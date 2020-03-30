@@ -64,6 +64,18 @@
             <groupId>com.foxtrot</groupId>
             <artifactId>foxtrot-client</artifactId>
             <version>${foxtrot.client.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.flipkart.foxtrot</groupId>
+                    <artifactId>foxtrot-core</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>com.foxtrot</groupId>
+            <artifactId>foxtrot-core</artifactId>
+            <version>6.3.1-3</version>
         </dependency>
 
     </dependencies>

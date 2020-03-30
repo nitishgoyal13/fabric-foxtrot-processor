@@ -4,14 +4,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.dataplatform</groupId>
+    <groupId>com.foxtrot</groupId>
     <artifactId>fabric-foxtrot-ingestion</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.0-SNAPSHOT</version>
 
     <properties>
-        <fabric.version>1.0.0-SNAPSHOT</fabric.version>
+        <fabric.version>3.0.14</fabric.version>
         <lombok.version>1.16.6</lombok.version>
-        <foxtrot.client.version>0.2.7-SNAPSHOT</foxtrot.client.version>
+        <foxtrot.client.version>0.2.9-SNAPSHOT</foxtrot.client.version>
         <junit.version>4.12</junit.version>
     </properties>
 
@@ -20,6 +20,20 @@
             <groupId>com.olacabs.fabric</groupId>
             <artifactId>fabric-compute-framework</artifactId>
             <version>${fabric.version}</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>httpclient</artifactId>
+                    <groupId>org.apache.httpcomponents</groupId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.reflections</groupId>
+                    <artifactId>reflections-maven</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.jfrog.artifactory.client</groupId>
+                    <artifactId>artifactory-java-client-services</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
@@ -61,7 +75,7 @@
         </dependency>
 
         <dependency>
-            <groupId>com.flipkart.foxtrot</groupId>
+            <groupId>com.foxtrot</groupId>
             <artifactId>foxtrot-client</artifactId>
             <version>${foxtrot.client.version}</version>
         </dependency>
@@ -82,10 +96,64 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>2.4.2</version>
+                <configuration>
+                    <createDependencyReducedPom>true</createDependencyReducedPom>
+                    <filters>
+                        <filter>
+                            <artifact>*:*</artifact>
+                            <excludes>
+                                <exclude>META-INF/*.SF</exclude>
+                                <exclude>META-INF/*.DSA</exclude>
+                                <exclude>META-INF/*.RSA</exclude>
+                            </excludes>
+                        </filter>
+                    </filters>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <transformers>
+                                <transformer
+                                implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
 
+    <repositories>
+        <repository>
+            <id>clojars</id>
+            <name>Clojars repository</name>
+            <url>https://clojars.org/repo</url>
+        </repository>
+    </repositories>
 
     <distributionManagement>
+        <repository>
+            <id>clojars</id>
+            <name>Clojars repository</name>
+            <url>https://clojars.org/repo</url>
+        </repository>
     </distributionManagement>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>clojars</id>
+            <name>Clojars repository</name>
+            <url>https://clojars.org/repo</url>
+        </pluginRepository>
+    </pluginRepositories>
 
 </project>

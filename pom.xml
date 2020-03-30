@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.phonepe.dataplatform</groupId>
+    <groupId>com.foxtrot</groupId>
     <artifactId>fabric-foxtrot-ingestion</artifactId>
     <version>1.8</version>
 
@@ -49,9 +49,9 @@
         </dependency>
 
         <dependency>
-            <groupId>com.phonepe.models</groupId>
-            <artifactId>phonepe-model</artifactId>
-            <version>1.6.44</version>
+            <groupId>com.models</groupId>
+            <artifactId>model</artifactId>
+            <version>1.1.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>*</groupId>
@@ -120,16 +120,6 @@
 
     <repositories>
         <repository>
-            <id>phonepe-releases</id>
-            <name>releases</name>
-            <url>http://artifactory.phonepe.com/content/repositories/releases</url>
-        </repository>
-        <repository>
-            <id>phonepe-snapshots</id>
-            <name>snapshots</name>
-            <url>http://artifactory.phonepe.com/content/repositories/snapshots</url>
-        </repository>
-        <repository>
             <id>clojars</id>
             <name>Clojars repository</name>
             <url>https://clojars.org/repo</url>
@@ -138,28 +128,13 @@
 
     <pluginRepositories>
         <pluginRepository>
-            <id>phonepe-releases</id>
-            <name>releases</name>
-            <url>http://artifactory.phonepe.com/content/repositories/releases</url>
-        </pluginRepository>
-        <pluginRepository>
-            <id>phonepe-snapshots</id>
-            <name>snapshots</name>
-            <url>http://artifactory.phonepe.com/content/repositories/snapshots</url>
+            <id>clojars</id>
+            <name>Clojars repository</name>
+            <url>https://clojars.org/repo</url>
         </pluginRepository>
     </pluginRepositories>
 
     <distributionManagement>
-        <repository>
-            <id>phonepe-releases</id>
-            <name>releases</name>
-            <url>http://artifactory.phonepe.com/content/repositories/releases</url>
-        </repository>
-        <snapshotRepository>
-            <id>phonepe-snapshots</id>
-            <name>snapshots</name>
-            <url>http://artifactory.phonepe.com/content/repositories/snapshots</url>
-        </snapshotRepository>
     </distributionManagement>
 
 </project>

@@ -50,9 +50,9 @@
         "source": {
           "type": "artifactory",
           "artifactoryUrl": "http://artifactory.phonepe.com",
-          "groupId": "com.phonepe.dataplatform",
+          "groupId": "com.foxtrot",
           "artifactId": "fabric-foxtrot-ingestion",
-          "version": "1.0-SNAPSHOT"
+          "version": "1.8"
         }
       },
       "properties": {
